@@ -1,0 +1,174 @@
+// ========================================================================
+// BUTTERFLY ACCELERATOR AXI4-LITE REGISTER MAP
+// This file dictates how the CPU talks to the custom FFT Butterfly IP.
+// The 'reggen' tool parses this file to generate 'butterfly_reg_top.sv'.
+// ========================================================================
+{
+  "name": "butterfly",
+  
+  // ----------------------------------------------------------------------
+  // SYSTEM SIGNALS
+  // These define the standard clock and reset names for the generated IP.
+  // ----------------------------------------------------------------------
+  "clock_primary": "clk_i",
+  "reset_primary": "rst_ni",
+  
+  // ----------------------------------------------------------------------
+  // BUS INTERFACE
+  // Tells the generator to build an AXI4-Lite slave interface ('device').
+  // This handles all the complex AXI handshaking automatically.
+  // ----------------------------------------------------------------------
+  "bus_interfaces": [
+    { "protocol": "reg_iface", "direction": "device" }
+  ],
+  
+  // All registers are standard 32-bit width for the PULPissimo SoC.
+  "regwidth": "32",
+  
+  "registers": [
+    // ====================================================================
+    // INPUT DATA REGISTERS (Software Writes, Hardware Reads)
+    // ====================================================================
+    {
+      // ------------------------------------------------------------------
+      // OP_LEFT
+      // The left operand is a 38-bit complex number (19-bit Real + 19-bit Imag).
+      // Because 38 > 32, we use a 'multireg' block with "count": "2".
+      // This generates two 32-bit addresses (OP_LEFT_0 and OP_LEFT_1) giving
+      // us 64 total bits of space to pack the data.
+      // ------------------------------------------------------------------
+      "multireg": {
+        "name": "OP_LEFT",
+        "desc": "Left operand input (Packed Q-format: 19-bit Real, 19-bit Imag)",
+        "count": "2",
+        "cname": "OP_LEFT",
+        
+        // swaccess: 'rw' means the CPU (Software) can Read and Write to this.
+        "swaccess": "rw",
+        
+        // hwaccess: 'hro' means Hardware Read-Only. 
+        // The hardware just passively listens to the flip-flop's '.q' wire.
+        "hwaccess": "hro",
+        "fields": [
+          { "bits": "31:0", "name": "VAL", "desc": "32 bits of the left operand" }
+        ]
+      }
+    },
+    {
+      // ------------------------------------------------------------------
+      // OP_RIGHT (Same architecture as OP_LEFT)
+      // ------------------------------------------------------------------
+      "multireg": {
+        "name": "OP_RIGHT",
+        "desc": "Right operand input (Packed Q-format: 19-bit Real, 19-bit Imag)",
+        "count": "2",
+        "cname": "OP_RIGHT",
+        "swaccess": "rw",
+        "hwaccess": "hro",
+        "fields": [
+          { "bits": "31:0", "name": "VAL", "desc": "32 bits of the right operand" }
+        ]
+      }
+    },
+    {
+      // ------------------------------------------------------------------
+      // COEF (TWIDDLE FACTOR)
+      // The coefficient is a 46-bit complex number (23-bit Real + 23-bit Imag).
+      // Also uses a 2-register multireg to provide 64 bits of space.
+      // ------------------------------------------------------------------
+      "multireg": {
+        "name": "COEF",
+        "desc": "Twiddle factor coefficient (Packed Q-format: 23-bit Real, 23-bit Imag)",
+        "count": "2",
+        "cname": "COEF",
+        "swaccess": "rw",
+        "hwaccess": "hro",
+        "fields": [
+          { "bits": "31:0", "name": "VAL", "desc": "32 bits of the twiddle factor" }
+        ]
+      }
+    },
+
+    // ====================================================================
+    // CONTROL & STATUS REGISTERS
+    // ====================================================================
+    {
+      // ------------------------------------------------------------------
+      // CTRL (PIPELINE CONTROL)
+      // ------------------------------------------------------------------
+      "name": "CTRL",
+      "desc": "Control register for triggering the pipeline and clock enable.",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      
+      // hwqe: 'true' is CRITICAL here. 
+      // It tells the generator to create a '.qe' (Q-Enable) wire that pulses 
+      // high for exactly ONE clock cycle when the software writes to this address.
+      // We wire this to 'i_aux' to trigger the pipeline exactly once.
+      "hwqe": "true",
+      
+      "fields": [
+        { "bits": "0", "name": "TRIGGER", "desc": "Write 1 to pulse i_aux (Uses the .qe wire)" },
+        { "bits": "1", "name": "ENABLE",  "desc": "Write 1 to drive i_clk_enable (Uses the stable .q wire)" }
+      ]
+    },
+    {
+      // ------------------------------------------------------------------
+      // STATUS (PIPELINE DONE FLAG)
+      // ------------------------------------------------------------------
+      "name": "STATUS",
+      "desc": "Status register to flag when the hardware has finished computation.",
+      
+      // swaccess: 'ro' means the CPU can only Read this. It cannot overwrite it.
+      "swaccess": "ro",
+      
+      // hwaccess: 'hwo' means Hardware Write-Only.
+      // The hardware owns this flip-flop. When 'o_aux' pulses, we wire it 
+      // to the '.de' (Data Enable) pin to latch a '1' into this register.
+      "hwaccess": "hwo",
+      "fields": [
+        { "bits": "0", "name": "DONE", "desc": "Hardware sets this to 1 when o_aux pulses high" }
+      ]
+    },
+
+    // ====================================================================
+    // OUTPUT DATA REGISTERS (Hardware Writes, Software Reads)
+    // ====================================================================
+    {
+      // ------------------------------------------------------------------
+      // RESULT_LEFT
+      // The 38-bit Sum output from the butterfly IP.
+      // We slice the 38-bit wire in our wrapper and push it into the '.d' 
+      // inputs of these two 32-bit registers, then latch it with o_aux.
+      // ------------------------------------------------------------------
+      "multireg": {
+        "name": "RESULT_LEFT",
+        "desc": "Left output result (Sum of the butterfly operation)",
+        "count": "2",
+        "cname": "RESULT_LEFT",
+        "swaccess": "ro",
+        "hwaccess": "hwo",
+        "fields": [
+          { "bits": "31:0", "name": "VAL", "desc": "32 bits of the left output result" }
+        ]
+      }
+    },
+    {
+      // ------------------------------------------------------------------
+      // RESULT_RIGHT
+      // The 38-bit Difference output from the butterfly IP.
+      // ------------------------------------------------------------------
+      "multireg": {
+        "name": "RESULT_RIGHT",
+        "desc": "Right output result (Difference of the butterfly operation)",
+        "count": "2",
+        "cname": "RESULT_RIGHT",
+        "swaccess": "ro",
+        "hwaccess": "hwo",
+        "fields": [
+          { "bits": "31:0", "name": "VAL", "desc": "32 bits of the right output result" }
+        ]
+      }
+    }
+  ]
+}
