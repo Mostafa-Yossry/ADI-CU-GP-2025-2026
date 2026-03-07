@@ -1,0 +1,66 @@
+{
+  "name": "simple_butterfly",
+  "clock_primary": "clk_i",
+  "reset_primary": "rst_ni",
+  "bus_interfaces": [
+    { "protocol": "reg_iface", "direction": "device" }
+  ],
+  "regwidth": 32,
+  "registers": [
+    {
+      "name": "TWIDDLE",
+      "desc": "Twiddle Index (11 bits).",
+      "swaccess": "wo",
+      "hwaccess": "hro",
+      "fields": [
+        { "bits": "10:0", "name": "IDX", "desc": "11 bits of the twiddle index" }
+      ]
+    },
+    {
+      "name": "OP_LEFT",
+      "desc": "Left operand (24 bits total).",
+      "swaccess": "wo",
+      "hwaccess": "hro",
+      "fields": [
+        { "bits": "23:0", "name": "VAL", "desc": "24 bits of the left operand" }
+      ]
+    },
+    {
+      "name": "OP_RIGHT",
+      "desc": "Right operand (24 bits total). Writing to this register Auto-Triggers the pipeline.",
+      "swaccess": "wo",
+      "hwaccess": "hro",
+      "hwqe": "true",
+      "fields": [
+        { "bits": "23:0", "name": "VAL", "desc": "24 bits of the right operand" }
+      ]
+    },
+    {
+      "name": "STATUS",
+      "desc": "Status register to check if computation is done.",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "fields": [
+        { "bits": "0", "name": "DONE", "desc": "Set to 1 when done." }
+      ]
+    },
+    {
+      "name": "RESULT_LEFT",
+      "desc": "Left output result (24 bits total).",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "fields": [
+        { "bits": "23:0", "name": "VAL", "desc": "24 bits of the left output result" }
+      ]
+    },
+    {
+      "name": "RESULT_RIGHT",
+      "desc": "Right output result (24 bits total).",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "fields": [
+        { "bits": "23:0", "name": "VAL", "desc": "24 bits of the right output result" }
+      ]
+    }
+  ]
+}
