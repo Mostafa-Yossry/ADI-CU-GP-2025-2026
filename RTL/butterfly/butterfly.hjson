@@ -1,0 +1,66 @@
+{
+  "name": "butterfly",
+  "clock_primary": "clk_i",
+  "reset_primary": "rst_ni",
+  "bus_interfaces": [
+    { "protocol": "reg_iface", "direction": "device" }
+  ],
+  "regwidth": 32,
+  "registers": [
+    {
+      "name": "COEF",
+      "desc": "Twiddle factor (32 bits total: 16-bit Real, 16-bit Imag).",
+      "swaccess": "wo",
+      "hwaccess": "hro",
+      "fields": [
+        { "bits": "31:0", "name": "VAL", "desc": "32 bits of the twiddle factor" }
+      ]
+    },
+    {
+      "name": "OP_LEFT",
+      "desc": "Left operand (24 bits total: 12-bit Real, 12-bit Imag).",
+      "swaccess": "wo",
+      "hwaccess": "hro",
+      "fields": [
+        { "bits": "23:0", "name": "VAL", "desc": "24 bits of the left operand" }
+      ]
+    },
+    {
+      "name": "OP_RIGHT",
+      "desc": "Right operand (24 bits total). Writing to this register Auto-Triggers the pipeline.",
+      "swaccess": "wo",
+      "hwaccess": "hro",
+      "hwqe": "true",
+      "fields": [
+        { "bits": "23:0", "name": "VAL", "desc": "24 bits of the right operand" }
+      ]
+    },
+    {
+      "name": "STATUS",
+      "desc": "Status register to check if computation is done (o_aux).",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "fields": [
+        { "bits": "0", "name": "DONE", "desc": "Set to 1 when o_aux pulses high." }
+      ]
+    },
+    {
+      "name": "RESULT_LEFT",
+      "desc": "Left output result (24 bits total: 12-bit Real, 12-bit Imag).",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "fields": [
+        { "bits": "23:0", "name": "VAL", "desc": "24 bits of the left output result" }
+      ]
+    },
+    {
+      "name": "RESULT_RIGHT",
+      "desc": "Right output result (24 bits total: 12-bit Real, 12-bit Imag).",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "fields": [
+        { "bits": "23:0", "name": "VAL", "desc": "24 bits of the right output result" }
+      ]
+    }
+  ]
+}
