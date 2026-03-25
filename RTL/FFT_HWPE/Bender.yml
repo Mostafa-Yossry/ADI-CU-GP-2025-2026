@@ -1,0 +1,43 @@
+package:
+  name: hwpe-FFT-engine
+  authors:
+    - "Mohamed Abdelhay <abdelhaymohamed21@gmail.com>"
+    - "Sama Zayed       <samazayed2003@gmail.com>"
+
+dependencies:
+  hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", version: 1.6 }
+  hci:         { git: "https://github.com/pulp-platform/hci.git", version: 1.0.6 }
+  hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 1.6 }
+
+
+sources:
+  - include_dirs:
+      - rtl
+    files:
+      # Source files grouped in levels. Files in level 0 have no dependencies on files in this
+      # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
+      # levels 1 and 0, etc. Files within a level are ordered alphabetically.
+      # Level 0
+      - rtl/FFT_package.sv
+      - rtl/engine/fft_dff.v
+      - rtl/engine/fft_stg_mux.v
+      - rtl/engine/fft_valid_out_gen.v
+      - rtl/engine/fft_fifo.v
+      - rtl/engine/fft_butterfly_unit.v
+      - rtl/engine/fft_modulo_N_counter.v
+      - rtl/engine/fft_rotator.v
+      # Level 1
+      - rtl/engine/fft_stg_fsm.v
+      # Level 2
+      - rtl/engine/fft_sdf_stg.v
+      # Level 3
+      - rtl/engine/fft8_dif.v
+      # Level 4
+      - rtl/fifo_v3.sv
+      - rtl/FFT_engine.sv
+      - rtl/FFT_fsm.sv
+      - rtl/FFT_streamer.sv
+      # Level 5
+      - rtl/FFT_ctrl.sv
+      # Level 6
+      - rtl/FFT_top.sv
