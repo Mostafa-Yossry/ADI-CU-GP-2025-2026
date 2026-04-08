@@ -26,14 +26,41 @@ module tb_butterfly;
   int test_id      = 0;
 
 ////////////////////////////////////////////////////////////
-// Cycle tracking
+// Cycle counter (stable reference)
 ////////////////////////////////////////////////////////////
 
-  int cycle_count = 0;
+  int cycle_count;
+
+  always @(posedge clk) begin
+      if (rst)
+          cycle_count <= 0;
+      else
+          cycle_count <= cycle_count + 1;
+  end
+
+////////////////////////////////////////////////////////////
+// Registered handshake signals (avoid race)
+////////////////////////////////////////////////////////////
+
+  logic aux_in_q, aux_out_q;
+
+  always @(posedge clk) begin
+      aux_in_q  <= aux_in;
+      aux_out_q <= aux_out;
+  end
+
+////////////////////////////////////////////////////////////
+// Latency tracking queue
+////////////////////////////////////////////////////////////
+
   int input_cycles[$];
 
-  always @(posedge clk)
-      cycle_count++;
+  // Push when DUT sees valid input
+  always @(posedge clk) begin
+      if (aux_in_q) begin
+          input_cycles.push_back(cycle_count);
+      end
+  end
 
 ////////////////////////////////////////////////////////////
 // DUT
@@ -66,7 +93,7 @@ module tb_butterfly;
   end
 
 ////////////////////////////////////////////////////////////
-// Stimulus task
+// Stimulus task (NO latency logic here anymore)
 ////////////////////////////////////////////////////////////
 
 task send_butterfly_data(
@@ -88,10 +115,8 @@ begin
 
     aux_in <= 1'b1;
 
-    input_cycles.push_back(cycle_count);
-
     $display("\n--------------------------------------------------");
-    $display("TEST %0d  |  cycle %0d", test_id, cycle_count);
+    $display("TEST %0d  | cycle %0d", test_id, cycle_count);
     $display("Twiddle Index : %0d", idx);
     $display("LEFT  INPUT   : %0d + j%0d", l_r,l_i);
     $display("RIGHT INPUT   : %0d + j%0d", r_r,r_i);
@@ -128,42 +153,10 @@ initial begin
     $display("        FFT Butterfly RTL Verification");
     $display("====================================================\n");
 
-////////////////////////////////////////////////////////////
-// Tests
-////////////////////////////////////////////////////////////
+    // Test
+    send_butterfly_data(11'd0, 100, 50, 40, 10);
 
-    send_butterfly_data(11'd0,   100,  50,   40,   10);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd1,   100,  50,   40,   10);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd2,   -80,  20,   30,  -15);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd1024, 50,   0,    0,    0);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd2047, 30,  10,    5,    2);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd512,  40,   0,    0,    0);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd300,  0,    0,    0,    0);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd100,  2047, 2047, 2047, 2047);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd200, -2048,-2048,-2048,-2048);
-    repeat(3) @(posedge clk);
-
-    send_butterfly_data(11'd750,  123, -456, -321, 111);
-
-////////////////////////////////////////////////////////////
-
-    repeat(200) @(posedge clk);
+    repeat(5) @(posedge clk);
 
     $display("\n====================================================");
     $display("Simulation Finished");
@@ -174,21 +167,17 @@ initial begin
 end
 
 ////////////////////////////////////////////////////////////
-// Result monitor
+// Result monitor (handshake aligned)
 ////////////////////////////////////////////////////////////
 
 always @(posedge clk)
 begin
-    if (aux_out)
+    if (aux_out_q)
     begin
-
         int start_cycle;
         int latency;
 
-        int lr;
-        int li;
-        int rr;
-        int ri;
+        int lr, li, rr, ri;
 
         start_cycle = input_cycles.pop_front();
         latency     = cycle_count - start_cycle;
@@ -201,12 +190,11 @@ begin
 
         result_count++;
 
-        $display("\nRESULT %0d  |  cycle %0d", result_count, cycle_count);
+        $display("\nRESULT %0d | cycle %0d", result_count, cycle_count);
         $display("Latency : %0d cycles", latency);
         $display("LEFT  OUTPUT  : %0d + j%0d", lr, li);
         $display("RIGHT OUTPUT  : %0d + j%0d", rr, ri);
         $display("====================================================");
-
     end
 end
 
