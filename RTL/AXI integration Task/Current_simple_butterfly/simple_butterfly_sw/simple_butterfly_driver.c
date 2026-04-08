@@ -22,14 +22,11 @@ void simple_butterfly_compute(int16_t left_r, int16_t left_i,
     *op_left_reg  = packed_left;
     *op_right_reg = packed_right; // HW Triggers here!
 
-    //while (!(*status_reg & 1));
+    /*while (!(*status_reg & 1));
     // --- OPTIMIZATION 1: Blind Wait ---
-    // Instead of waiting on an expensive AXI read, we force the CPU to wait 
-    // 7 clock cycles, perfectly matching the hardware pipeline latency.
     asm volatile(
-        "nop \n" "nop \n" "nop \n" "nop \n"
-        "nop \n" "nop \n" "nop \n"
-    );
+        "nop \n" "nop \n" 
+    );*/
 
     *res_left  = *res_left_reg;
     *res_right = *res_right_reg;

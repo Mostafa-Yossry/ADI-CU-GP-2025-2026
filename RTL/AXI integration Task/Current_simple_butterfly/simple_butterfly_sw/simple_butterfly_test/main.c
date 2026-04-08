@@ -35,11 +35,10 @@ static inline void inline_butterfly_compute(uint32_t packed_left, uint32_t packe
     *((volatile uint32_t*)(SIMPLE_BUTTERFLY_BASE_ADDR + SIMPLE_BUTTERFLY_OP_LEFT_REG_OFFSET)) = packed_left;
     *((volatile uint32_t*)(SIMPLE_BUTTERFLY_BASE_ADDR + SIMPLE_BUTTERFLY_OP_RIGHT_REG_OFFSET)) = packed_right; // Triggers HW
 
-    // 7-cycle blind wait
+    /* cycle blind wait
     asm volatile(
-        "nop \n" "nop \n" "nop \n" "nop \n"
-        "nop \n" "nop \n" "nop \n"
-    );
+        "nop \n" "nop \n" 
+    );*/
 
     *res_left  = *((volatile uint32_t*)(SIMPLE_BUTTERFLY_BASE_ADDR + SIMPLE_BUTTERFLY_RESULT_LEFT_REG_OFFSET));
     *res_right = *((volatile uint32_t*)(SIMPLE_BUTTERFLY_BASE_ADDR + SIMPLE_BUTTERFLY_RESULT_RIGHT_REG_OFFSET));
