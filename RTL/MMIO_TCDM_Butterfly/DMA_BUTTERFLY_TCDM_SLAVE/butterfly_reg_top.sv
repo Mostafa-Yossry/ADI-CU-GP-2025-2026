@@ -210,7 +210,7 @@ module butterfly_reg_top #(
     .d      ('0  ),
 
     // to internal hardware
-    .qe     (),
+    .qe     (reg2hw.op_right.qe),
     .q      (reg2hw.op_right.q ),
 
     // to register interface (read)

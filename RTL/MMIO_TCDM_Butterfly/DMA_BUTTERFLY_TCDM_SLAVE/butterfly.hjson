@@ -47,11 +47,12 @@
         { "bits": "23:0", "name": "DATA", "desc": "Left operand data (i_left)" }
       ]
     },
-    {
+{
       "name": "OP_RIGHT",
       "desc": "Right operand",
       "swaccess": "rw",
       "hwaccess": "hro",
+      "hwqe": "true", 
       "fields": [
         { "bits": "23:0", "name": "DATA", "desc": "Right operand data (i_right)" }
       ]

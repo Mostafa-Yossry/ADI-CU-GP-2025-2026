@@ -34,6 +34,7 @@ package butterfly_reg_pkg;
 
   typedef struct packed {
     logic [23:0] q;
+    logic        qe;
   } butterfly_reg2hw_op_right_reg_t;
 
   typedef struct packed {
@@ -50,10 +51,10 @@ package butterfly_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    butterfly_reg2hw_ctrl_reg_t ctrl; // [62:59]
-    butterfly_reg2hw_twiddle_reg_t twiddle; // [58:48]
-    butterfly_reg2hw_op_left_reg_t op_left; // [47:24]
-    butterfly_reg2hw_op_right_reg_t op_right; // [23:0]
+    butterfly_reg2hw_ctrl_reg_t ctrl; // [63:60]
+    butterfly_reg2hw_twiddle_reg_t twiddle; // [59:49]
+    butterfly_reg2hw_op_left_reg_t op_left; // [48:25]
+    butterfly_reg2hw_op_right_reg_t op_right; // [24:0]
   } butterfly_reg2hw_t;
 
   // HW -> register type

@@ -71,7 +71,9 @@ module butterfly_tcdm_top #(
     logic [23:0] bfly_o_left;
     logic [23:0] bfly_o_right;
 
-    assign bfly_trigger = reg2hw.ctrl.trigger.q & reg2hw.ctrl.trigger.qe;
+   // OLD: assign bfly_trigger = reg2hw.ctrl.trigger.q & reg2hw.ctrl.trigger.qe;
+    // NEW: Auto-Trigger when the CPU writes the Right Operand
+    assign bfly_trigger = reg2hw.op_right.qe;
 
     // 6. Instantiating the Butterfly Math Core
     simple_butterfly #(
@@ -102,14 +104,14 @@ module butterfly_tcdm_top #(
     logic [23:0] res_left_q;
     logic [23:0] res_right_q;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
+always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             done_flag_q <= 1'b0;
             res_left_q  <= '0;
             res_right_q <= '0;
         end else begin
-            // Clear flag when software writes to CTRL.CLEAR
-            if (reg2hw.ctrl.clear.qe && reg2hw.ctrl.clear.q) begin
+            // NEW: Auto-clear the flag if the CPU manually requests a clear OR if a new trigger fires
+            if ((reg2hw.ctrl.clear.qe && reg2hw.ctrl.clear.q) || bfly_trigger) begin
                 done_flag_q <= 1'b0;
             end 
             // Set flag and latch data when butterfly finishes
@@ -118,11 +120,11 @@ module butterfly_tcdm_top #(
                 res_left_q  <= bfly_o_left;
                 res_right_q <= bfly_o_right;
             end
-        end // <--- MAKE SURE THIS 'end' IS HERE
-    end     // <--- MAKE SURE THIS 'end' IS HERE
+        end
+    end
 
     // Wire latched data back to the register file (REMOVED .done and .data)
-    assign hw2reg.status.d    = done_flag_q;
+   assign hw2reg.status.d    = done_flag_q;
     assign hw2reg.res_left.d  = res_left_q;
     assign hw2reg.res_right.d = res_right_q;
     
@@ -146,3 +148,5 @@ module butterfly_tcdm_top #(
     // pragma translate_on
 
 endmodule
+
+

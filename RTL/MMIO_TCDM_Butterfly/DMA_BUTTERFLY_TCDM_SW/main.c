@@ -66,8 +66,8 @@ int main() {
         perf_reset();
         perf_start();
 
-        // CPU manually writes operands, triggers HW, and polls status
-        int status = mmio_butterfly_compute(tests[t].tw, packed_left, packed_right, &res_left, &res_right);
+// CPU executes raw pointer logic directly inside this loop!
+        int status = mmio_butterfly_compute_inline(tests[t].tw, packed_left, packed_right, &res_left, &res_right);
 
         perf_stop();
         unsigned int latency = cpu_perf_get(0);
