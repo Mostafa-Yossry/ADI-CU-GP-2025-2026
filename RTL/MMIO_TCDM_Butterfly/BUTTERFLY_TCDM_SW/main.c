@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "pulp.h"
-#include "DMA_butterfly_driver.h" // Using your prefixed header
+#include "TCDM_SLAVE_butterfly_driver.h" // Using your prefixed header
 
 int main() {
     printf("Hello World!\n"); 
@@ -16,7 +16,7 @@ int main() {
     printf("Starting DMA_Butterfly computation...\n");
 
     // Execute hardware-accelerated computation
-    int status = butterfly_compute(twiddle_idx, op_left, op_right, &res_left, &res_right);
+    int status = mmio_butterfly_compute(twiddle_idx, op_left, op_right, &res_left, &res_right);
 
     // Output result to UART
     if (status == 0) {
