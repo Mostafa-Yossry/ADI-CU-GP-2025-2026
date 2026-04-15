@@ -1,0 +1,80 @@
+{
+  "name": "butterfly",
+  "clock_primary": "clk_i",
+  "reset_primary": "rst_ni",
+  "bus_interfaces": [
+    { "protocol": "reg_iface", "direction": "device" }
+  ],
+  "regwidth": 32,
+  "registers": [
+    {
+      "name": "CTRL",
+      "desc": "Control register",
+      "swaccess": "wo",
+      "hwaccess": "hro",
+      "hwext": "true",
+      "hwqe": "true",
+      "fields": [
+        { "bits": "0", "name": "TRIGGER", "desc": "Trigger the butterfly operation (i_aux)" },
+        { "bits": "1", "name": "CLEAR",   "desc": "Clear the done flag" }
+      ]
+    },
+    {
+      "name": "STATUS",
+      "desc": "Status register",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [
+        { "bits": "0", "name": "DONE", "desc": "Operation complete flag (latched o_aux)" }
+      ]
+    },
+    {
+      "name": "TWIDDLE",
+      "desc": "Twiddle factor index",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [
+        { "bits": "10:0", "name": "IDX", "desc": "Twiddle index (i_twiddle_idx)" }
+      ]
+    },
+    {
+      "name": "OP_LEFT",
+      "desc": "Left operand",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [
+        { "bits": "23:0", "name": "DATA", "desc": "Left operand data (i_left)" }
+      ]
+    },
+    {
+      "name": "OP_RIGHT",
+      "desc": "Right operand",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [
+        { "bits": "23:0", "name": "DATA", "desc": "Right operand data (i_right)" }
+      ]
+    },
+    {
+      "name": "RES_LEFT",
+      "desc": "Left result",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [
+        { "bits": "23:0", "name": "DATA", "desc": "Left result data (latched o_left)" }
+      ]
+    },
+    {
+      "name": "RES_RIGHT",
+      "desc": "Right result",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [
+        { "bits": "23:0", "name": "DATA", "desc": "Right result data (latched o_right)" }
+      ]
+    }
+  ]
+}
