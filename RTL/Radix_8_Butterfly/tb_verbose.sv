@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module tb_radix8_butterfly;
+module tb_radix8_butterfly_verbose;
 
   parameter IWIDTH = 16;
   parameter CWIDTH = 16;
@@ -13,22 +13,23 @@ module tb_radix8_butterfly;
 
   logic [8:0] twiddle_idx;
 
-  // Flattened buses for 8 complex numbers
-  logic [(8*2*IWIDTH-1):0] data_in;
+  // 8 Separate Complex Input Registers
+  logic [2*IWIDTH-1:0] i_data0, i_data1, i_data2, i_data3;
+  logic [2*IWIDTH-1:0] i_data4, i_data5, i_data6, i_data7;
   logic aux_in;
 
-  logic [(8*2*OWIDTH-1):0] data_out;
+  // 8 Separate Complex Output Registers
+  logic [2*OWIDTH-1:0] o_data0, o_data1, o_data2, o_data3;
+  logic [2*OWIDTH-1:0] o_data4, o_data5, o_data6, o_data7;
   logic aux_out;
 
   int result_count = 0;
   int test_id      = 0;
 
   ////////////////////////////////////////////////////////////
-  // Cycle counter (stable reference)
+  // Cycle counter & Handshake Tracking
   ////////////////////////////////////////////////////////////
-
   int cycle_count;
-
   always @(posedge clk)
   begin
     if (rst)
@@ -37,37 +38,24 @@ module tb_radix8_butterfly;
       cycle_count <= cycle_count + 1;
   end
 
-  ////////////////////////////////////////////////////////////
-  // Registered handshake signals (avoid race)
-  ////////////////////////////////////////////////////////////
-
   logic aux_in_q, aux_out_q;
-
   always @(posedge clk)
   begin
     aux_in_q  <= aux_in;
     aux_out_q <= aux_out;
   end
 
-  ////////////////////////////////////////////////////////////
-  // Latency tracking queue
-  ////////////////////////////////////////////////////////////
-
   int input_cycles[$];
-
   always @(posedge clk)
   begin
     if (aux_in_q)
-    begin
       input_cycles.push_back(cycle_count);
-    end
   end
 
   ////////////////////////////////////////////////////////////
-  // DUT
+  // DUT Instantiation (Updated to match 8-port interface)
   ////////////////////////////////////////////////////////////
-
-  radix8_butterfly #(
+  radix8_butterfly_verbose #(
                      .IWIDTH(IWIDTH),
                      .CWIDTH(CWIDTH),
                      .OWIDTH(OWIDTH),
@@ -77,16 +65,19 @@ module tb_radix8_butterfly;
                      .i_reset(rst),
                      .i_clk_enable(ce),
                      .i_twiddle_idx(twiddle_idx),
-                     .i_data(data_in),
+                     // Inputs
+                     .i_data0(i_data0), .i_data1(i_data1), .i_data2(i_data2), .i_data3(i_data3),
+                     .i_data4(i_data4), .i_data5(i_data5), .i_data6(i_data6), .i_data7(i_data7),
                      .i_aux(aux_in),
-                     .o_data(data_out),
+                     // Outputs
+                     .o_data0(o_data0), .o_data1(o_data1), .o_data2(o_data2), .o_data3(o_data3),
+                     .o_data4(o_data4), .o_data5(o_data5), .o_data6(o_data6), .o_data7(o_data7),
                      .o_aux(aux_out)
                    );
 
   ////////////////////////////////////////////////////////////
-  // Clock
+  // Clock Generation
   ////////////////////////////////////////////////////////////
-
   initial
   begin
     clk = 0;
@@ -95,27 +86,27 @@ module tb_radix8_butterfly;
   end
 
   ////////////////////////////////////////////////////////////
-  // Stimulus task
+  // Stimulus task (Modified to drive 8 discrete ports)
   ////////////////////////////////////////////////////////////
-
   task send_radix8_data(
-      input logic [10:0] idx,
+      input logic [8:0] idx,
       input logic signed [IWIDTH-1:0] in_r [0:7],
       input logic signed [IWIDTH-1:0] in_i [0:7]
     );
     begin
       @(posedge clk);
-
       test_id++;
-
       twiddle_idx <= idx;
 
-      // Pack the SV arrays into the flattened DUT bus
-      for (int i = 0; i < 8; i++)
-      begin
-        data_in[(i*2*IWIDTH) + (2*IWIDTH-1) -: IWIDTH] <= in_r[i];
-        data_in[(i*2*IWIDTH) + (IWIDTH-1)   -: IWIDTH] <= in_i[i];
-      end
+      // Map array to discrete ports
+      i_data0 <= {in_r[0], in_i[0]};
+      i_data1 <= {in_r[1], in_i[1]};
+      i_data2 <= {in_r[2], in_i[2]};
+      i_data3 <= {in_r[3], in_i[3]};
+      i_data4 <= {in_r[4], in_i[4]};
+      i_data5 <= {in_r[5], in_i[5]};
+      i_data6 <= {in_r[6], in_i[6]};
+      i_data7 <= {in_r[7], in_i[7]};
 
       aux_in <= 1'b1;
 
@@ -123,35 +114,28 @@ module tb_radix8_butterfly;
       $display("TEST %0d  | cycle %0d", test_id, cycle_count);
       $display("Twiddle Index : %0d", idx);
       for (int i = 0; i < 8; i++)
-      begin
         $display("INPUT [%0d]    : %0d + j%0d", i, in_r[i], in_i[i]);
-      end
       $display("--------------------------------------------------");
 
       @(posedge clk);
       aux_in <= 1'b0;
-
     end
   endtask
 
   ////////////////////////////////////////////////////////////
-  // Test sequence
+  // Test sequence (remains functionally the same)
   ////////////////////////////////////////////////////////////
-
   initial
   begin
     rst = 1;
-    ce  = 0;
-
+    ce = 0;
     twiddle_idx = 0;
-    data_in  = 0;
-    aux_in   = 0;
+    {i_data0, i_data1, i_data2, i_data3, i_data4, i_data5, i_data6, i_data7} = 0;
+    aux_in = 0;
 
     repeat(5) @(posedge clk);
-
     rst = 0;
-    ce  = 1;
-
+    ce = 1;
     repeat(3) @(posedge clk);
 
     $display("\n====================================================");
@@ -169,7 +153,7 @@ module tb_radix8_butterfly;
         '{ 100, 100, 100, 100, 100, 100, 100, 100 }, // Real
         '{ 0,   0,   0,   0,   0,   0,   0,   0   }  // Imag
       );
-      
+
     // =========================================================
     // TEST 2: Nyquist Frequency (Alternating signs)
     // EXPECTED:
@@ -352,36 +336,41 @@ module tb_radix8_butterfly;
   end
 
   ////////////////////////////////////////////////////////////
-  // Result monitor (handshake aligned)
+  // Result monitor (Updated to unpack 8 discrete ports)
   ////////////////////////////////////////////////////////////
-
   always @(posedge clk)
   begin
     if (aux_out_q)
     begin
-      int start_cycle;
-      int latency;
-      int out_r [0:7];
-      int out_i [0:7];
+      int start_cycle, latency;
+      int out_r [0:7], out_i [0:7];
 
       start_cycle = input_cycles.pop_front();
       latency     = cycle_count - start_cycle;
 
-      // Unpack the flattened output bus for printing
-      for (int i = 0; i < 8; i++)
-      begin
-        out_r[i] = $signed(data_out[(i*2*OWIDTH) + (2*OWIDTH-1) -: OWIDTH]);
-        out_i[i] = $signed(data_out[(i*2*OWIDTH) + (OWIDTH-1)   -: OWIDTH]);
-      end
+      // Unpack from discrete output ports
+      out_r[0] = $signed(o_data0[2*OWIDTH-1 : OWIDTH]);
+      out_i[0] = $signed(o_data0[OWIDTH-1 : 0]);
+      out_r[1] = $signed(o_data1[2*OWIDTH-1 : OWIDTH]);
+      out_i[1] = $signed(o_data1[OWIDTH-1 : 0]);
+      out_r[2] = $signed(o_data2[2*OWIDTH-1 : OWIDTH]);
+      out_i[2] = $signed(o_data2[OWIDTH-1 : 0]);
+      out_r[3] = $signed(o_data3[2*OWIDTH-1 : OWIDTH]);
+      out_i[3] = $signed(o_data3[OWIDTH-1 : 0]);
+      out_r[4] = $signed(o_data4[2*OWIDTH-1 : OWIDTH]);
+      out_i[4] = $signed(o_data4[OWIDTH-1 : 0]);
+      out_r[5] = $signed(o_data5[2*OWIDTH-1 : OWIDTH]);
+      out_i[5] = $signed(o_data5[OWIDTH-1 : 0]);
+      out_r[6] = $signed(o_data6[2*OWIDTH-1 : OWIDTH]);
+      out_i[6] = $signed(o_data6[OWIDTH-1 : 0]);
+      out_r[7] = $signed(o_data7[2*OWIDTH-1 : OWIDTH]);
+      out_i[7] = $signed(o_data7[OWIDTH-1 : 0]);
 
       result_count++;
-
       $display("\nRESULT %0d | cycle %0d", result_count, cycle_count);
       $display("Latency : %0d cycles", latency);
       for (int i = 0; i < 8; i++)
-      begin
         $display("OUTPUT [%0d]   : %0d + j%0d", i, out_r[i], out_i[i]);
-      end
       $display("====================================================");
     end
   end

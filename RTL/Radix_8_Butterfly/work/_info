@@ -7,107 +7,157 @@ z2
 !i10e 25
 !i10f 100
 cModel Technology
-Z0 dD:/A Graduation Project/simple_butterfly
+dD:/A Graduation Project/simple_butterfly
 T_opt
-!s110 1777126977
-VcEK1FVNZYWTIbNcYOoQkJ3
-04 19 4 work tb_radix8_butterfly fast 0
-=1-841b77d6ef2f-69ecce41-2b3-4d04
+!s110 1777135638
+VIlAFC=7R2SfYNGEDW@]FY0
+04 27 4 work tb_radix8_butterfly_verbose fast 0
+=1-841b77d6ef2f-69ecf015-3bc-12a4
 o-quiet -auto_acc_if_foreign -work work +acc
-Z1 tCvgOpt 0
+Z0 tCvgOpt 0
 n@_opt
 OL;O;10.7c;67
-R0
 vconvround
-Z2 DXx6 sv_std 3 std 0 22 d=_JfHTnXCN[H5FjiaJJc0
-Z3 !s110 1777127115
+Z1 DXx6 sv_std 3 std 0 22 d=_JfHTnXCN[H5FjiaJJc0
+Z2 !s110 1777135632
 !i10b 1
 !s100 <k@8I>MM[K0=oB:TCPh7=0
 IIh?mi`YkEh`?Ja>FBlPWh1
-Z4 VDg1SIo80bB@j0V0VzS_@n1
+Z3 VDg1SIo80bB@j0V0VzS_@n1
 !s105 convround_sv_unit
 S1
-Z5 dD:/A Graduation Project/Radix_8_Butterfly
+Z4 dD:/A Graduation Project/Radix_8_Butterfly
 w1771802889
 8convround.sv
 Fconvround.sv
 L0 11
-Z6 OL;L;10.7c;67
+Z5 OL;L;10.7c;67
 r1
 !s85 0
 31
-Z7 !s108 1777127115.000000
-!s107 tb.sv|radix8_butterfly.v|twiddle_rom_bank.sv|convround.sv|
-Z8 !s90 -reportprogress|300|convround.sv|twiddle_rom_bank.sv|radix8_butterfly.v|tb.sv|
+Z6 !s108 1777135632.000000
+Z7 !s107 tb_verbose.sv|radix8_butterfly_verbose.sv|twiddle_rom_bank.sv|convround.sv|
+Z8 !s90 -reportprogress|300|convround.sv|twiddle_rom_bank.sv|radix8_butterfly_verbose.sv|tb_verbose.sv|
 !i113 0
 Z9 o-L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
-R1
+R0
 vradix8_butterfly
-R3
+R1
+!s110 1777135586
 !i10b 1
-!s100 Qb<A5W8^d0]`Ek<SL`T[73
-IObBFGXnfV=]c:6n<S;Eik0
+!s100 k_mX=CFAL2Kb4[;m3g4>10
+I9gfcM::zSGQP6>1bbgU^C0
+R3
+Z10 !s105 radix8_butterfly_verbose_sv_unit
+S1
 R4
-R5
-w1777126538
-8radix8_butterfly.v
-Fradix8_butterfly.v
+w1777135275
+Z11 8radix8_butterfly_verbose.sv
+Z12 Fradix8_butterfly_verbose.sv
 L0 1
-R6
+R5
 r1
 !s85 0
 31
+!s108 1777135586.000000
 R7
-Z10 !s107 tb.sv|radix8_butterfly.v|twiddle_rom_bank.sv|convround.sv|
 R8
 !i113 0
 R9
+R0
+vradix8_butterfly_verbose
 R1
-vtb_radix8_butterfly
 R2
-R3
 !i10b 1
-!s100 aoU[M?lBS5H`LjF_aDYi80
-I^g;B=0`ALCh36P0HB2^4g2
+!s100 f>MSHd5C7E6k0c448GcLl3
+I0mcC@6oIMDYUGM6iklHek3
+R3
+R10
+S1
 R4
+w1777135622
+R11
+R12
+L0 1
+R5
+r1
+!s85 0
+31
+R6
+R7
+R8
+!i113 0
+R9
+R0
+vtb_radix8_butterfly
+R1
+!s110 1777135291
+!i10b 1
+!s100 A=7XFFf2HT0d[=zm]CSHP1
+IchOK>DWC^e`eeISQ1?G:z1
+R3
 !s105 tb_sv_unit
 S1
-R5
-w1777126971
+R4
+w1777134079
 8tb.sv
 Ftb.sv
 L0 3
-R6
+R5
 r1
 !s85 0
 31
+!s108 1777135291.000000
+!s107 tb.sv|radix8_butterfly_verbose.sv|twiddle_rom_bank.sv|convround.sv|
+!s90 -reportprogress|300|convround.sv|twiddle_rom_bank.sv|radix8_butterfly_verbose.sv|tb.sv|
+!i113 0
+R9
+R0
+vtb_radix8_butterfly_verbose
+R1
+R2
+!i10b 1
+!s100 6QZI3XGMnOQD2_3_S063c0
+I[KJO7[O>6iAa7Ioh2U3S;0
+R3
+!s105 tb_verbose_sv_unit
+S1
+R4
+w1777135628
+8tb_verbose.sv
+Ftb_verbose.sv
+L0 3
+R5
+r1
+!s85 0
+31
+R6
 R7
-R10
 R8
 !i113 0
 R9
-R1
+R0
 vtwiddle_rom_radix8
+R1
 R2
-R3
 !i10b 1
-!s100 gTfZ7ZkI04`;<Kl`oL<nR0
-I[AO4_PGXME]3K2anjnV0N3
-R4
+!s100 0l?28`L<RMc2f0]E_D6zd3
+I>N>bJ:6j1D4TKga:h5O[g0
+R3
 !s105 twiddle_rom_bank_sv_unit
 S1
-R5
-w1777124778
+R4
+w1777133731
 8twiddle_rom_bank.sv
 Ftwiddle_rom_bank.sv
 L0 6
-R6
+R5
 r1
 !s85 0
 31
+R6
 R7
-R10
 R8
 !i113 0
 R9
-R1
+R0

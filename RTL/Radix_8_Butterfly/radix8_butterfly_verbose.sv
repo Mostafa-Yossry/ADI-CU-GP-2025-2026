@@ -1,4 +1,4 @@
-module radix8_butterfly #(
+module radix8_butterfly_verbose #(
     parameter IWIDTH = 16,
     parameter CWIDTH = 16,
     parameter OWIDTH = 16,
@@ -7,18 +7,18 @@ module radix8_butterfly #(
     input  wire                   i_clk,
     input  wire                   i_reset,
     input  wire                   i_clk_enable,
-    // Twiddle interface: Packed as {W7, W6, W5, W4, W3, W2, W1}
-    input  wire [8:0]            i_twiddle_idx, // Index used to address the ROM
+    input  wire [8:0]             i_twiddle_idx,
 
-    // 8 Complex Inputs: [Real(IWIDTH), Imag(IWIDTH)] x 8
-    input  wire [(8*2*IWIDTH-1):0] i_data,
+    // 8 Separate Complex Inputs (Real + Imag packed into 32 bits each)
+    input  wire [2*IWIDTH-1:0]    i_data0, i_data1, i_data2, i_data3,
+    input  wire [2*IWIDTH-1:0]    i_data4, i_data5, i_data6, i_data7,
     input  wire                   i_aux,
 
-    // 8 Complex Outputs
-    output wire [(8*2*OWIDTH-1):0] o_data,
+    // 8 Separate Complex Outputs
+    output wire [2*OWIDTH-1:0]    o_data0, o_data1, o_data2, o_data3,
+    output wire [2*OWIDTH-1:0]    o_data4, o_data5, o_data6, o_data7,
     output wire                   o_aux
   );
-
   // ---------------------------------------------------------
   // TWIDDLE ROM FETCH (Synchronous)
   // ---------------------------------------------------------
@@ -34,20 +34,30 @@ module radix8_butterfly #(
                      );
 
   // ---------------------------------------------------------
-  // STAGE 0: Unpacking (Combinational)
+  // INTERNAL DATA MAPPING
   // ---------------------------------------------------------
-  // Extracting the flat bus into arrays for symbolic math.
+  // We still use internal 2D arrays so the math loops don't
+  // have to be rewritten as 8 separate lines of code.
   wire signed [IWIDTH-1:0] s0_r [0:7];
   wire signed [IWIDTH-1:0] s0_i [0:7];
 
-  genvar i;
-  generate
-    for (i = 0; i < 8; i = i + 1)
-    begin : unpack
-      assign s0_r[i] = i_data[(i*2*IWIDTH) + (2*IWIDTH-1) -: IWIDTH];
-      assign s0_i[i] = i_data[(i*2*IWIDTH) + (IWIDTH-1)   -: IWIDTH];
-    end
-  endgenerate
+  // Mapping the separate inputs into the internal array
+  assign s0_r[0] = i_data0[2*IWIDTH-1 : IWIDTH];
+  assign s0_i[0] = i_data0[IWIDTH-1 : 0];
+  assign s0_r[1] = i_data1[2*IWIDTH-1 : IWIDTH];
+  assign s0_i[1] = i_data1[IWIDTH-1 : 0];
+  assign s0_r[2] = i_data2[2*IWIDTH-1 : IWIDTH];
+  assign s0_i[2] = i_data2[IWIDTH-1 : 0];
+  assign s0_r[3] = i_data3[2*IWIDTH-1 : IWIDTH];
+  assign s0_i[3] = i_data3[IWIDTH-1 : 0];
+  assign s0_r[4] = i_data4[2*IWIDTH-1 : IWIDTH];
+  assign s0_i[4] = i_data4[IWIDTH-1 : 0];
+  assign s0_r[5] = i_data5[2*IWIDTH-1 : IWIDTH];
+  assign s0_i[5] = i_data5[IWIDTH-1 : 0];
+  assign s0_r[6] = i_data6[2*IWIDTH-1 : IWIDTH];
+  assign s0_i[6] = i_data6[IWIDTH-1 : 0];
+  assign s0_r[7] = i_data7[2*IWIDTH-1 : IWIDTH];
+  assign s0_i[7] = i_data7[IWIDTH-1 : 0];
 
   // ---------------------------------------------------------
   // STAGE 1: First Rank & W8 Rotations
@@ -58,7 +68,7 @@ module radix8_butterfly #(
   // Temporary wires for differences
   wire signed [IWIDTH:0] d1_r [0:3];
   wire signed [IWIDTH:0] d1_i [0:3];
-
+  genvar i;
   generate
     // Calculate Sums (Even indices routing)
     for (i = 0; i < 4; i = i + 1)
@@ -123,7 +133,6 @@ module radix8_butterfly #(
   // ---------------------------------------------------------
   wire signed [IWIDTH+2:0] s3_r [0:7];
   wire signed [IWIDTH+2:0] s3_i [0:7];
-
   generate
     for (i = 0; i < 8; i = i + 2)
     begin : stage3_gen
@@ -181,14 +190,15 @@ module radix8_butterfly #(
   wire signed [IWIDTH+CWIDTH+2:0] mpy_r [0:7];
   wire signed [IWIDTH+CWIDTH+2:0] mpy_i [0:7];
 
-  // Index 0: No complex multiply (W^0 = 1). 
+  // Index 0: No complex multiply (W^0 = 1).
   // We left-shift by CWIDTH-1 to align decimal points with multiplier outputs.
-  assign mpy_r[0] = { r_s3_r[0], {(CWIDTH-1){1'b0}} }; 
+  assign mpy_r[0] = { r_s3_r[0], {(CWIDTH-1){1'b0}} };
   assign mpy_i[0] = { r_s3_i[0], {(CWIDTH-1){1'b0}} };
 
   generate
-    for (m = 1; m <= 7; m = m + 1) begin : complex_mpy_gen
-      
+    for (m = 1; m <= 7; m = m + 1)
+    begin : complex_mpy_gen
+
       // -----------------------------------------------------
       // GAUSS'S 3-MULTIPLIER TRICK
       // A = r_s3_r[m]   |   C = twid_r[m]
@@ -198,7 +208,7 @@ module radix8_butterfly #(
       // 1. Pre-Adders (Bit growth requires +1 bit width)
       // Data Sum: A + B (19 bits -> 20 bits)
       wire signed [IWIDTH+3:0] data_sum = r_s3_r[m] + r_s3_i[m];
-      
+
       // Twiddle Sum/Diff: C + D and D - C (16 bits -> 17 bits)
       wire signed [CWIDTH:0] twid_sum  = twid_r[m] + twid_i[m];
       wire signed [CWIDTH:0] twid_diff = twid_i[m] - twid_r[m];
@@ -216,7 +226,7 @@ module radix8_butterfly #(
 
     end
   endgenerate
-  // ---------------------------------------------------------
+    // ---------------------------------------------------------
   // STAGE 5: Convergent Rounding (Synchronous)
   // ---------------------------------------------------------
   // The 'convround' module introduces 1 clock cycle of latency.
@@ -280,16 +290,16 @@ module radix8_butterfly #(
 
   assign o_aux = o_aux_reg;
 
-  // Pack the 2D arrays back into the flattened 1D output bus
-  generate
-    for (p = 0; p < 8; p = p + 1)
-    begin : pack_output
-      assign o_data[(p*2*OWIDTH) + (2*OWIDTH-1) -: OWIDTH] = final_r[p];
-      assign o_data[(p*2*OWIDTH) + (OWIDTH-1)   -: OWIDTH] = final_i[p];
-    end
-  endgenerate
-
-  // ==============================================================================
-  // END OF MODULE
-  // ==============================================================================
+  // ---------------------------------------------------------
+  // OUTPUT ASSIGNMENT
+  // ---------------------------------------------------------
+  // Mapping the internal final results back to separate output ports
+  assign o_data0 = {final_r[0], final_i[0]};
+  assign o_data1 = {final_r[1], final_i[1]};
+  assign o_data2 = {final_r[2], final_i[2]};
+  assign o_data3 = {final_r[3], final_i[3]};
+  assign o_data4 = {final_r[4], final_i[4]};
+  assign o_data5 = {final_r[5], final_i[5]};
+  assign o_data6 = {final_r[6], final_i[6]};
+  assign o_data7 = {final_r[7], final_i[7]};
 endmodule
