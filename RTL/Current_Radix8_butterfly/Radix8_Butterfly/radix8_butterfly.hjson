@@ -1,0 +1,163 @@
+{
+  "name": "radix8_butterfly",
+  "clock_primary": "clk_i",
+  "reset_primary": "rst_ni",
+  "bus_interfaces": [
+    { "protocol": "reg_iface", "direction": "device" }
+  ],
+  "regwidth": 32,
+  "registers": [
+{
+      "name": "CTRL",
+      "desc": "Control register",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "hwqe": "true",       // <--- ADD THIS LINE HERE
+      "fields": [
+        { "bits": "0", "name": "TRIGGER", "desc": "Manual trigger (i_aux)" },
+        { "bits": "1", "name": "CLEAR",   "desc": "Clear the done flag" },
+        { "bits": "2", "name": "CLK_EN",  "desc": "Clock enable (i_clk_enable)" }
+      ]
+    },
+    {
+      "name": "STATUS",
+      "desc": "Status register",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [
+        { "bits": "0", "name": "DONE", "desc": "Operation complete flag (latched o_aux)" }
+      ]
+    },
+    {
+      "name": "TWIDDLE",
+      "desc": "Twiddle factor index",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [
+        { "bits": "8:0", "name": "IDX", "desc": "Twiddle index (i_twiddle_idx)" }
+      ]
+    },
+    {
+      "name": "DATA0",
+      "desc": "Input data 0 (i_data0)",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag" } ]
+    },
+    {
+      "name": "DATA1",
+      "desc": "Input data 1 (i_data1)",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag" } ]
+    },
+    {
+      "name": "DATA2",
+      "desc": "Input data 2 (i_data2)",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag" } ]
+    },
+    {
+      "name": "DATA3",
+      "desc": "Input data 3 (i_data3)",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag" } ]
+    },
+    {
+      "name": "DATA4",
+      "desc": "Input data 4 (i_data4)",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag" } ]
+    },
+    {
+      "name": "DATA5",
+      "desc": "Input data 5 (i_data5)",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag" } ]
+    },
+    {
+      "name": "DATA6",
+      "desc": "Input data 6 (i_data6)",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag" } ]
+    },
+    {
+      "name": "DATA7",
+      "desc": "Input data 7 (i_data7) - Write triggers hardware execution",
+      "swaccess": "rw",
+      "hwaccess": "hro",
+      "hwqe": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag" } ]
+    },
+    {
+      "name": "OUT0",
+      "desc": "Output data 0 (o_data0)",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag (latched)" } ]
+    },
+    {
+      "name": "OUT1",
+      "desc": "Output data 1 (o_data1)",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag (latched)" } ]
+    },
+    {
+      "name": "OUT2",
+      "desc": "Output data 2 (o_data2)",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag (latched)" } ]
+    },
+    {
+      "name": "OUT3",
+      "desc": "Output data 3 (o_data3)",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag (latched)" } ]
+    },
+    {
+      "name": "OUT4",
+      "desc": "Output data 4 (o_data4)",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag (latched)" } ]
+    },
+    {
+      "name": "OUT5",
+      "desc": "Output data 5 (o_data5)",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag (latched)" } ]
+    },
+    {
+      "name": "OUT6",
+      "desc": "Output data 6 (o_data6)",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag (latched)" } ]
+    },
+    {
+      "name": "OUT7",
+      "desc": "Output data 7 (o_data7)",
+      "swaccess": "ro",
+      "hwaccess": "hwo",
+      "hwext": "true",
+      "fields": [ { "bits": "31:0", "name": "VAL", "desc": "Packed Real/Imag (latched)" } ]
+    }
+  ]
+}
