@@ -1,0 +1,128 @@
+### Summary of what we're doing and the problem faced
+
+**Goal:** Implement a DMA-accelerated data pipeline where cluster PEs process data from L1 TCDM while the DMA engine transfers data between L2 (shared memory) and L1 (cluster-local fast memory).
+
+**The 4-phase plan:**
+- Phase 1: CPU `memcpy` as golden reference ✅ passed
+- Phase 2: Replace `memcpy` with DMA transfers ← currently here
+- Phase 3: Double buffering (overlap DMA + compute)
+- Phase 4: Full pipeline
+
+---
+
+**Problem faced in Phase 2:**
+
+The linker is placing ALL four arrays (`l2_input`, `l2_output`, `l1_buf`, `l1_out`) in L2 at `0x1C00_xxxx`. This means the DMA is doing L2→L2 copies which are meaningless — there is no actual L1 involvement.
+
+```
+Expected:                        Actual (wrong):
+l2_input  → 0x1C00_xxxx ✓       l2_input  → 0x1C000964 ✓
+l2_output → 0x1C00_xxxx ✓       l2_output → 0x1C0009E4 ✓
+l1_buf    → 0x1000_xxxx ✗       l1_buf    → 0x1C0009A4 ✗ (in L2!)
+l1_out    → 0x1000_xxxx ✗       l1_out    → 0x1C000A24 ✗ (in L2!)
+```
+
+---
+
+**The fix — now confirmed from the linker script:**
+
+The linker script defines two relevant sections for cluster L1:
+
+| Section name | Maps to | Use for |
+|---|---|---|
+| `.data_l1` | `L1` at `0x1000_0004` | Cluster 0 initialized data |
+| `.bss_l1` | `L1` at `0x1000_xxxx` | Cluster 0 zero-initialized data |
+| `.data_l1_cl1` | `L1_CL1` at `0x1040_0004` | Cluster 1 data |
+| `.bss_l1_cl1` | `L1_CL1` at `0x1040_xxxx` | Cluster 1 zero-initialized data |
+
+Since our arrays start as zero (BSS), use `.bss_l1`:
+
+```bash
+nano ~/GP/examples/cluster/call/test.c
+```
+
+Change only the `l1_buf` and `l1_out` declarations:
+
+```c
+#include "pulp.h"
+#include <stdio.h>
+
+#define N_POINTS    16
+#define N_PES       ARCHI_CLUSTER_NB_PE
+#define SLICE       (N_POINTS / N_PES)
+#define CHUNK_BYTES (N_POINTS * sizeof(int32_t))
+
+// L2 — FC initializes these, cluster reads/writes via DMA
+volatile int32_t l2_input [N_POINTS];
+volatile int32_t l2_output[N_POINTS];
+
+// L1 TCDM cluster 0 — fast local memory, DMA destination/source
+__attribute__((section(".bss_l1"))) volatile int32_t l1_buf[N_POINTS];
+__attribute__((section(".bss_l1"))) volatile int32_t l1_out[N_POINTS];
+
+static int cluster0_entry()
+{
+    int pid = hal_core_id();
+
+    if (pid == 0) {
+        unsigned int id = plp_dma_memcpy(
+            (unsigned int)l2_input,
+            (unsigned int)l1_buf,
+            CHUNK_BYTES,
+            1                        // ext2loc: L2 → L1
+        );
+        plp_dma_wait(id);
+        printf("PE0: DMA load done, l1_buf[0]=%d\n", (int)l1_buf[0]);
+    }
+    synch_barrier();
+
+    for (int i = pid * SLICE; i < (pid + 1) * SLICE; i++)
+        l1_out[i] = l1_buf[i] * 2;
+    synch_barrier();
+
+    if (pid == 0) {
+        printf("PE0: l1_out[0]=%d, writing back\n", (int)l1_out[0]);
+        unsigned int id = plp_dma_memcpy(
+            (unsigned int)l2_output,
+            (unsigned int)l1_out,
+            CHUNK_BYTES,
+            0                        // loc2ext: L1 → L2
+        );
+        plp_dma_wait(id);
+        printf("PE0: DMA store done, l2_output[0]=%d\n", (int)l2_output[0]);
+    }
+    synch_barrier();
+
+    return 0;
+}
+
+int main(void)
+{
+    printf("FC: Phase 2 start\n");
+
+    for (int i = 0; i < N_POINTS; i++)
+        l2_input[i] = (int32_t)i;
+
+    cluster_start(0, cluster0_entry);
+    cluster_wait(0);
+
+    int errors = 0;
+    for (int i = 0; i < N_POINTS; i++) {
+        int32_t got      = (int32_t)l2_output[i];
+        int32_t expected = (int32_t)l2_input[i] * 2;
+        if (got != expected) {
+            printf("MISMATCH [%d]: got %d expected %d\n", i, got, expected);
+            errors++;
+        }
+    }
+
+    if (errors == 0)
+        printf("FC: Phase 2 PASSED\n");
+    else
+        printf("FC: Phase 2 FAILED - %d errors\n", errors);
+
+    return errors;
+}
+```
+
+```
