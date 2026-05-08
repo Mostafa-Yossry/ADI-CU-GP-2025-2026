@@ -1,0 +1,197 @@
+m255
+K4
+z2
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dD:/A Graduation Project/Matrix_MUL/New 2D systolic
+T_opt
+!s110 1778268505
+V:ME2IROfn5>mDgniPj;mD3
+04 26 4 work tb_systolic_matmul_latency fast 0
+=1-841b77d6ef2f-69fe3959-109-1b8c
+Z1 o-quiet -auto_acc_if_foreign -work work +acc
+Z2 tCvgOpt 0
+n@_opt
+Z3 OL;O;10.7c;67
+R0
+T_opt1
+!s110 1778271085
+VO80EW@P2:MUILWae3YnPl3
+04 26 4 work tb_systolic_matmul_vectors fast 0
+=1-841b77d6ef2f-69fe436c-3de-6420
+R1
+R2
+n@_opt1
+R3
+vcomplex_mac_pe
+Z4 DXx6 sv_std 3 std 0 22 d=_JfHTnXCN[H5FjiaJJc0
+Z5 !s110 1778271079
+!i10b 1
+!s100 LLeeO^X]Dc_DP27C?;@mf2
+IjfSWZ[?174fO57lNBkVQL3
+Z6 VDg1SIo80bB@j0V0VzS_@n1
+!s105 complex_mac_pe_sv_unit
+S1
+Z7 dD:/A Graduation Project/Matrix_MUL/systolic
+w1778270810
+8complex_mac_pe.sv
+Fcomplex_mac_pe.sv
+L0 8
+Z8 OL;L;10.7c;67
+r1
+!s85 0
+31
+Z9 !s108 1778271079.000000
+Z10 !s107 tb_systolic_matmul_vectors.sv|tb_systolic_matmul_latency.sv|tb_systolic_matmul.sv|tb_debug_test1.sv|systolic_matmul.sv|input_widen.sv|complex_mac_pe.sv|
+Z11 !s90 -reportprogress|300|complex_mac_pe.sv|input_widen.sv|systolic_matmul.sv|tb_debug_test1.sv|tb_systolic_matmul.sv|tb_systolic_matmul_latency.sv|tb_systolic_matmul_vectors.sv|
+!i113 0
+Z12 o-L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+R2
+vinput_widen
+R4
+R5
+!i10b 1
+!s100 Hg76QC=IU>QfhbLBbDcWQ2
+I;C28`Sic8QcnhDzUn`^B40
+R6
+!s105 input_widen_sv_unit
+S1
+R7
+w1778203071
+8input_widen.sv
+Finput_widen.sv
+L0 37
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vsystolic_matmul
+R4
+R5
+!i10b 1
+!s100 6h;<@B?lem2Hf9]z`F?]]0
+I;oXfknzM:a;]9oEm=z@mF3
+R6
+!s105 systolic_matmul_sv_unit
+S1
+R7
+w1778270428
+8systolic_matmul.sv
+Fsystolic_matmul.sv
+L0 130
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_debug_test1
+R4
+R5
+!i10b 1
+!s100 Qj4Kd=[jXg6mPj`n?0P4Z3
+IQ<C`G7mM]dHPFe=P5L6Th0
+R6
+!s105 tb_debug_test1_sv_unit
+S1
+R7
+w1778199785
+8tb_debug_test1.sv
+Ftb_debug_test1.sv
+L0 10
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_systolic_matmul
+R4
+R5
+!i10b 1
+!s100 n5I2`H>E:_i4kz8[?ZkL42
+IaT0Y@=JCaT=N@:J9>8UFK3
+R6
+!s105 tb_systolic_matmul_sv_unit
+S1
+R7
+w1778203208
+8tb_systolic_matmul.sv
+Ftb_systolic_matmul.sv
+L0 44
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_systolic_matmul_latency
+R4
+R5
+!i10b 1
+!s100 Co]2dI;5GWc3hcW?O12VM0
+Ib_Ta_QP0fA2S>>n`KJKXR3
+R6
+!s105 tb_systolic_matmul_latency_sv_unit
+S1
+R7
+w1778205099
+8tb_systolic_matmul_latency.sv
+Ftb_systolic_matmul_latency.sv
+L0 22
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_systolic_matmul_vectors
+R4
+R5
+!i10b 1
+!s100 2UgE=EIY`Vi9l`^UaDlbY0
+IeUU]`_gjW1_I4dejc7kni0
+R6
+!s105 tb_systolic_matmul_vectors_sv_unit
+S1
+R7
+w1778271075
+8tb_systolic_matmul_vectors.sv
+Ftb_systolic_matmul_vectors.sv
+L0 84
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
