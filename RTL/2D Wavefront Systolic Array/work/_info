@@ -1,0 +1,207 @@
+m255
+K4
+z2
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dD:/A Graduation Project/Matrix_MUL/systolic
+T_opt
+!s110 1778217266
+Vi_9DHiiQF^BWalk8eL`[k3
+04 26 4 work tb_systolic_matmul_latency fast 0
+=1-841b77d6ef2f-69fd7132-1d1-5430
+Z1 o-quiet -auto_acc_if_foreign -work work +acc
+Z2 tCvgOpt 0
+n@_opt
+Z3 OL;O;10.7c;67
+T_opt1
+!s110 1778210006
+Vi:]IBMUz@KZ3oIH;W3[[]0
+04 28 4 work tb_systolic_matmul_wavefront fast 0
+=1-841b77d6ef2f-69fd54d5-381-22d0
+R1
+R2
+n@_opt1
+R3
+R0
+T_opt2
+!s110 1778216950
+V@hD:l6o6XOA=IXj?ED?[T3
+04 26 4 work tb_systolic_matmul_vectors fast 0
+=1-841b77d6ef2f-69fd6ff6-306-e48
+R1
+R2
+n@_opt2
+R3
+R0
+vcomplex_mac_pe
+Z4 DXx6 sv_std 3 std 0 22 d=_JfHTnXCN[H5FjiaJJc0
+Z5 !s110 1778217263
+!i10b 1
+!s100 Pd2P9H3mczEm65FhZJ@Pb3
+IoCin=^DIaXP[Bj[A6<2k12
+Z6 VDg1SIo80bB@j0V0VzS_@n1
+!s105 complex_mac_pe_sv_unit
+S1
+Z7 dD:/A Graduation Project/Matrix_MUL/2D Wavefront Systolic Array
+w1778204354
+8complex_mac_pe.sv
+Fcomplex_mac_pe.sv
+L0 8
+Z8 OL;L;10.7c;67
+r1
+!s85 0
+31
+Z9 !s108 1778217263.000000
+Z10 !s107 tb_systolic_matmul_vectors.sv|tb_systolic_matmul_latency.sv|tb_systolic_matmul.sv|systolic_matmul.sv|input_widen.sv|complex_mac_pe.sv|
+Z11 !s90 -reportprogress|300|complex_mac_pe.sv|input_widen.sv|systolic_matmul.sv|tb_systolic_matmul.sv|tb_systolic_matmul_latency.sv|tb_systolic_matmul_vectors.sv|
+!i113 0
+Z12 o-L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+R2
+vinput_widen
+R4
+R5
+!i10b 1
+!s100 Hg76QC=IU>QfhbLBbDcWQ2
+I;C28`Sic8QcnhDzUn`^B40
+R6
+!s105 input_widen_sv_unit
+S1
+R7
+w1778203071
+8input_widen.sv
+Finput_widen.sv
+L0 37
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vsystolic_matmul
+R4
+R5
+!i10b 1
+!s100 d<J]<AP2U36i65VS9071n3
+I<cRdeki4kVfGB7k;3jg`P2
+R6
+!s105 systolic_matmul_sv_unit
+S1
+R7
+w1778216945
+8systolic_matmul.sv
+Fsystolic_matmul.sv
+L0 111
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_systolic_matmul
+R4
+R5
+!i10b 1
+!s100 n5I2`H>E:_i4kz8[?ZkL42
+IaT0Y@=JCaT=N@:J9>8UFK3
+R6
+!s105 tb_systolic_matmul_sv_unit
+S1
+R7
+w1778203208
+8tb_systolic_matmul.sv
+Ftb_systolic_matmul.sv
+L0 44
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_systolic_matmul_latency
+R4
+R5
+!i10b 1
+!s100 TD9`5RSIg?KoHWdZgM^Bb1
+II_;`Jk:?ez0]Lkz8=Cm]82
+R6
+!s105 tb_systolic_matmul_latency_sv_unit
+S1
+R7
+w1778217244
+8tb_systolic_matmul_latency.sv
+Ftb_systolic_matmul_latency.sv
+L0 33
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_systolic_matmul_vectors
+R4
+R5
+!i10b 1
+!s100 DXIP`MPkVK@7`^1[:B`UV3
+I<^i[A`GRWh8iJO?::4?7A2
+R6
+Z13 !s105 tb_systolic_matmul_vectors_sv_unit
+S1
+R7
+w1778215651
+Z14 8tb_systolic_matmul_vectors.sv
+Z15 Ftb_systolic_matmul_vectors.sv
+L0 65
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_systolic_matmul_wavefront
+R4
+!s110 1778210004
+!i10b 1
+!s100 O1>Am<n]7cLZajOK@i?;22
+IQ`[;97^HZ@iad;bU[BYUz1
+R6
+R13
+S1
+R7
+w1778209118
+R14
+R15
+L0 51
+R8
+r1
+!s85 0
+31
+!s108 1778210004.000000
+R10
+R11
+!i113 0
+R12
+R2
