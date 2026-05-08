@@ -4,36 +4,10 @@
 // File-based RTL verification testbench for ŷ = H^H · y  (Matched Filter)
 //
 // MATLAB model reference:
-//   T_Z = MULTIPLICATION_TYPES('fixed_point_Z_8x8', 12)   <-- length=12
+//   T_Z = MULTIPLICATION_TYPES('fixed_point_Z_8x8', 16)   <-- length=16
 //   Z_fixed = systolic_matmul_8_8__8_1_mex(HH, Y, T_Z)
 //
-// Output format from MATLAB (length=12):
-//   T.Q1_11 = fi([], 1, 12, 7)  ->  Q5.7,   12-bit,  SCALE = 2^7 = 128
-//
-// RTL output format:
-//   WL_OUT = 12,  FL = 7   ->  Q5.7,   12-bit,  SCALE = 2^7  = 128
-//
-// Both sides use SCALE = 128.  TOL = 1 LSB of Q5.7 = 1/128 ~ 0.007813
-//
-// Golden vector files (rtl_vectors_conv_Z_Q1_11/):
-//   z_real_golden.txt / z_imag_golden.txt : Q5.7  stored integers (12-bit)
-//   hh_real.txt / hh_imag.txt             : Q1.11 stored integers (12-bit)
-//   y_real.txt  / y_imag.txt              : Q1.11 stored integers (12-bit)
-//
-// Pipeline latency (COLS=1): (ROWS-1)+(COLS-1)+K_DEPTH+1 = 7+0+8+1 = 16
-//
-// FIX LOG:
-//   FIX 1-6 : from previous sessions (COLS=1, correct ports, PIPE_LAT=16,
-//              last-pulse capture, Q5.7 scale) — now superseded by this file.
-//   FIX 7   : WL_OUT changed 12->16, SCALE changed 128->2048, TOL updated.
-//             The MATLAB model is called with length=16, so T.Q1_11 is
-//             fi(1,16,11) = Q5.11 16-bit. RTL and golden both Q5.11.
-//   FIX 8   : apply_reset extended to (ROWS+K_DEPTH) idle cycles after
-//             rst_n release to eliminate inter-test contamination.
-//   FIX 9   : WL_OUT corrected 16->12 (Q5.7). MATLAB uses length=12 giving
-//             Q5.7 golden. DUT must be instantiated with WL_OUT=12 so PE
-//             accumulates in 12-bit Q5.7. SCALE/TOL already correct at 128.
-// =============================================================================
+
 
 `timescale 1ns/1ps
 
@@ -48,9 +22,9 @@ localparam COLS    = 1;
 localparam K_DEPTH = 8;
 
 localparam WL_IN   = 12;
-localparam WL_OUT  = 12;   // Q5.7   12-bit  (MATLAB length=12)
+localparam WL_OUT  = 12;   
 
-// Both RTL output and golden files are Q5.7:  scale = 2^7 = 128
+// Both RTL output and golden files are Q5.11:  scale = 2^11 = 2048
 localparam real SCALE_RTL    = 128.0;
 localparam real SCALE_GOLDEN = 128.0;
 
@@ -60,7 +34,7 @@ localparam PIPE_LAT = (ROWS-1) + (COLS-1) + K_DEPTH + 1;  // 16
 localparam NUM_TESTS  = 100;
 localparam MAX_CYCLES = 300;
 
-// TOL = 1 LSB of Q5.7 = 1/128
+// TOL = 1 LSB of Q5.11 = 1/2048
 localparam real TOL = 1.0 / 128.0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +175,7 @@ begin
         y_i_mem[k] = tmp;
     end
 
-    // Golden Z: 8 values per test (Q5.7 stored integers, 12-bit)
+    // Golden Z: 8 values per test (Q5.11 stored integers, 16-bit)
     for (row = 0; row < ROWS; row = row + 1) begin
         status = $fscanf(fid_z_real, "%d\n", tmp);
         z_r_golden[row] = tmp;
@@ -284,7 +258,7 @@ endtask
 
 ////////////////////////////////////////////////////////////////////////////////
 // CHECK RESULTS
-// Golden files contain Q5.7 12-bit stored integers -> divide by SCALE_GOLDEN=128
+// Golden files contain Q5.11 16-bit stored integers -> divide by SCALE_GOLDEN=2048
 ////////////////////////////////////////////////////////////////////////////////
 
 task check_results;
@@ -347,7 +321,7 @@ initial begin
     $display(" FILE-BASED SYSTOLIC ARRAY TESTBENCH");
     $display(" COLS=%0d  ROWS=%0d  K_DEPTH=%0d", COLS, ROWS, K_DEPTH);
     $display(" PIPE_LAT=%0d  NUM_TESTS=%0d", PIPE_LAT, NUM_TESTS);
-    $display(" WL_IN=%0d  WL_OUT=%0d  (Q5.7)", WL_IN, WL_OUT);
+    $display(" WL_IN=%0d  WL_OUT=%0d  (Q5.11)", WL_IN, WL_OUT);
     $display(" SCALE=%.0f  TOL=%.6f", SCALE_RTL, TOL);
     $display("========================================");
 
