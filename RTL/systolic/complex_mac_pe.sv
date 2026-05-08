@@ -34,10 +34,6 @@ module complex_mac_pe #(
     output reg         valid_out
 );
 
-// --- Compile-time proof that this fixed source is being elaborated ----------
-// Remove or comment this out after confirming 40/40.
-initial $display("[complex_mac_pe] FIXED version elaborated (hold on valid_in=0)");
-
 // ---------------------------------------------------------------------------
 // STAGE 1: Full-precision 16x16 complex multiply -> Q2.30
 // ---------------------------------------------------------------------------

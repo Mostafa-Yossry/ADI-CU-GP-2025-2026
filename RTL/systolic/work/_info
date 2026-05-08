@@ -28,17 +28,26 @@ R2
 n@_opt1
 R3
 R0
+T_opt2
+!s110 1778204360
+V3U@JUgYke3Bha:I@1WR_k3
+04 26 4 work tb_systolic_matmul_vectors fast 0
+=1-841b77d6ef2f-69fd3ec8-370-5b3c
+R1
+R2
+n@_opt2
+R3
 vcomplex_mac_pe
 Z4 DXx6 sv_std 3 std 0 22 d=_JfHTnXCN[H5FjiaJJc0
-Z5 !s110 1778203500
+Z5 !s110 1778204359
 !i10b 1
-!s100 Vo_`k97OmD2_HjS_bbDZ;2
-I^N:>iQWYCYc`>PQn6ND@C3
+!s100 Pd2P9H3mczEm65FhZJ@Pb3
+IoCin=^DIaXP[Bj[A6<2k12
 Z6 VDg1SIo80bB@j0V0VzS_@n1
 !s105 complex_mac_pe_sv_unit
 S1
 Z7 dD:/A Graduation Project/Matrix_MUL/systolic
-w1778203178
+w1778204354
 8complex_mac_pe.sv
 Fcomplex_mac_pe.sv
 L0 8
@@ -46,11 +55,11 @@ Z8 OL;L;10.7c;67
 r1
 !s85 0
 31
-Z9 !s108 1778203500.000000
-!s107 tb_systolic_matmul.sv|tb_debug_test1.sv|systolic_matmul.sv|input_widen.sv|complex_mac_pe.sv|
-Z10 !s90 -reportprogress|300|complex_mac_pe.sv|input_widen.sv|systolic_matmul.sv|tb_debug_test1.sv|tb_systolic_matmul.sv|
+Z9 !s108 1778204359.000000
+Z10 !s107 tb_systolic_matmul_vectors.sv|tb_systolic_matmul.sv|tb_debug_test1.sv|systolic_matmul.sv|input_widen.sv|complex_mac_pe.sv|
+Z11 !s90 -reportprogress|300|complex_mac_pe.sv|input_widen.sv|systolic_matmul.sv|tb_debug_test1.sv|tb_systolic_matmul.sv|tb_systolic_matmul_vectors.sv|
 !i113 0
-Z11 o-L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+Z12 o-L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
 R2
 vinput_widen
 R4
@@ -71,10 +80,10 @@ r1
 !s85 0
 31
 R9
-Z12 !s107 tb_systolic_matmul.sv|tb_debug_test1.sv|systolic_matmul.sv|input_widen.sv|complex_mac_pe.sv|
 R10
-!i113 0
 R11
+!i113 0
+R12
 R2
 vsystolic_matmul
 R4
@@ -95,10 +104,10 @@ r1
 !s85 0
 31
 R9
-R12
 R10
-!i113 0
 R11
+!i113 0
+R12
 R2
 vtb_debug_test1
 R4
@@ -119,10 +128,10 @@ r1
 !s85 0
 31
 R9
-R12
 R10
-!i113 0
 R11
+!i113 0
+R12
 R2
 vtb_systolic_matmul
 R4
@@ -143,8 +152,32 @@ r1
 !s85 0
 31
 R9
-R12
 R10
-!i113 0
 R11
+!i113 0
+R12
+R2
+vtb_systolic_matmul_vectors
+R4
+R5
+!i10b 1
+!s100 n@]0E`=i=nL5=5HW;UH@H0
+ID>8zBQJ1m69bH>lLO>@9Q2
+R6
+!s105 tb_systolic_matmul_vectors_sv_unit
+S1
+R7
+w1778204274
+8tb_systolic_matmul_vectors.sv
+Ftb_systolic_matmul_vectors.sv
+L0 53
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
 R2
