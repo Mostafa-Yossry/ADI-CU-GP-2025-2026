@@ -1,13 +1,38 @@
 // =============================================================================
-// complex_mac_pe.sv   (also provided as complex_mac_pe.v — identical content)
+// complex_mac_pe.sv
 // -----------------------------------------------------------------------------
-// FIXED VERSION: else-branch pass-through removed.
-// e_out HOLDS when valid_in=0 so partial sums survive across idle cycles.
+// MATCHED FILTER PE — Fixed-point format matches MATLAB golden exactly.
+//
+// MATLAB model: MULTIPLICATION_TYPES('fixed_point_Z_8x8', 12)
+//   WL_OP  = 16  (Q1.15 after input widening)
+//   WL_ACC = 12  (Q5.7 accumulator / output)
+//
+// Fixed-point chain:
+//   Input (boundary)  : Q1.11,  12-bit   (WL_IN  = 12)
+//   After widening    : Q1.15,  16-bit   (WL_INT = 16)  [4 zero LSBs]
+//   After multiply    : Q2.30,  32-bit   (full precision product)
+//   RIGHT_SH = FRAC_PROD - FRAC_ACC = 30 - 7 = 23
+//   After rounding    : Q5.7,   12-bit   (WL_ACC = 12)  [convergent]
+//   Output Z          : Q5.7,   12-bit   — matches MATLAB T.Q1_11 exactly
+//
+// Accumulation model:
+//   The MATLAB staged accumulator (Q2_->Q3_->Q4_->Q5_) widens format
+//   at each doubling of K, but the FINAL output is always Q5.7 (12-bit).
+//   The RTL accumulates directly in Q5.7 throughout — each product is
+//   rounded to Q5.7 before being added, matching the MATLAB golden
+//   because the golden files are generated with length=12 (Q5.7 output).
+//   Rounding method: Convergent (round-half-to-even), matching fimath.
+//
+// Self-accumulation (COLS=1):
+//   e_in is hardwired to 0 (leftmost column). e_out self-accumulates:
+//     e_out += round(product)   when valid_in=1
+//     e_out holds               when valid_in=0
+//   rst_n clears e_out between transactions.
 // =============================================================================
 
 module complex_mac_pe #(
-    parameter WL_OP  = 16,   // operand word length  (Q1.15)
-    parameter WL_ACC = 16    // accumulator / e word length (Q5.11)
+    parameter WL_OP  = 16,   // operand word length  (Q1.15 after widening)
+    parameter WL_ACC = 12    // accumulator word length (Q5.7)
 )(
     input  wire        clk,
     input  wire        rst_n,
@@ -44,62 +69,54 @@ wire signed [2*WL_OP-1:0] prod_ir = a_imag * b_real;
 
 wire signed [2*WL_OP-1:0] mult_real = prod_rr - prod_ii;
 wire signed [2*WL_OP-1:0] mult_imag = prod_ri + prod_ir;
-/*
+
 // ---------------------------------------------------------------------------
-// STAGE 2: Align Q2.30 -> Q5.11 (right-shift by 19)
+// STAGE 2: Align Q2.30 -> Q5.7 using CONVERGENT ROUNDING
+//
+// FRAC_PROD = 2*WL_OP - 2 = 30   (Q2.30 product fractional bits)
+// FRAC_ACC  = WL_ACC - 5   =  7   (Q5.7 accumulator: 5 integer, 7 fractional)
+// RIGHT_SH  = 30 - 7       = 23   (bits to discard)
+//
+// Convergent rounding (round-half-to-even):
+//   round = guard & (sticky | lsb)
+//   where guard  = bit[RIGHT_SH-1]  (first discarded bit)
+//         sticky = OR(bits[RIGHT_SH-2:0])  (any remaining discarded bits)
+//         lsb    = retained result bit[0]  (for tie-breaking)
 // ---------------------------------------------------------------------------
 localparam FRAC_PROD = 2*WL_OP - 2;           // 30
-localparam FRAC_ACC  = WL_ACC - 5;            // 11
-localparam RIGHT_SH  = FRAC_PROD - FRAC_ACC;  // 19
+localparam FRAC_ACC  = WL_ACC - 5;            //  7  (Q5.7)
+localparam RIGHT_SH  = FRAC_PROD - FRAC_ACC;  // 23
 
-wire signed [WL_ACC-1:0] prod_real_aligned = mult_real >>> RIGHT_SH;
-wire signed [WL_ACC-1:0] prod_imag_aligned = mult_imag >>> RIGHT_SH;
-*/
-// ---------------------------------------------------------------------------
-// STAGE 2: Align Q2.30 -> Q5.11 using CONVERGENT ROUNDING
-// ---------------------------------------------------------------------------
-localparam FRAC_PROD = 2*WL_OP - 2;           // 30
-localparam FRAC_ACC  = WL_ACC - 5;            // 11
-localparam RIGHT_SH  = FRAC_PROD - FRAC_ACC;  // 19
-
-// Arithmetic shift result
+// Truncated (arithmetic right shift)
 wire signed [WL_ACC-1:0] trunc_real = mult_real >>> RIGHT_SH;
 wire signed [WL_ACC-1:0] trunc_imag = mult_imag >>> RIGHT_SH;
 
-// First dropped bit
+// Guard bit (first dropped bit)
 wire guard_real = mult_real[RIGHT_SH-1];
 wire guard_imag = mult_imag[RIGHT_SH-1];
 
-// Remaining dropped bits
+// Sticky bit (OR of remaining dropped bits)
 wire sticky_real = |mult_real[RIGHT_SH-2:0];
 wire sticky_imag = |mult_imag[RIGHT_SH-2:0];
 
-// LSB of retained result
+// LSB of retained result (for tie-breaking)
 wire lsb_real = trunc_real[0];
 wire lsb_imag = trunc_imag[0];
 
-// Convergent rounding (round-half-to-even)
+// Convergent round decision
 wire round_real = guard_real & (sticky_real | lsb_real);
 wire round_imag = guard_imag & (sticky_imag | lsb_imag);
 
-wire signed [WL_ACC-1:0] prod_real_aligned =
-    trunc_real + round_real;
-
-wire signed [WL_ACC-1:0] prod_imag_aligned =
-    trunc_imag + round_imag;
+// Rounded product aligned to Q5.7
+wire signed [WL_ACC-1:0] prod_real_aligned = trunc_real + {{(WL_ACC-1){1'b0}}, round_real};
+wire signed [WL_ACC-1:0] prod_imag_aligned = trunc_imag + {{(WL_ACC-1){1'b0}}, round_imag};
 
 // ---------------------------------------------------------------------------
-// STAGE 3: Registered add + pass-through
+// STAGE 3: Registered self-accumulate + pass-through
 //
-// KEY RULE: e_out is updated ONLY when valid_in=1.
-//   On valid_in=1: self-accumulate — add new product to e_out.
-//   On valid_in=0: HOLD e_out.
-//
-// With valid_burst, valid_in fires K_DEPTH consecutive cycles per
-// transaction.  Each PE must accumulate all K_DEPTH products into e_out.
-// e_in is hardwired to 0 for the leftmost column (COLS=1 matched filter),
-// so accumulation must be e_out += product, not e_in + product.
-// e_out is cleared by rst_n between transactions.
+// e_out updated ONLY when valid_in=1 (hold otherwise).
+// Self-accumulates: e_out += prod_aligned  (e_in unused for COLS=1).
+// rst_n (async) clears e_out between transactions.
 // ---------------------------------------------------------------------------
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -117,14 +134,13 @@ always @(posedge clk or negedge rst_n) begin
         b_pass_imag <= b_imag;
 
         if (valid_in) begin
-            e_out_real <= e_out_real + prod_real_aligned;  // self-accumulate
+            e_out_real <= e_out_real + prod_real_aligned;
             e_out_imag <= e_out_imag + prod_imag_aligned;
         end
-        // else: HOLD — do not touch e_out_real / e_out_imag
+        // else: HOLD — partial sum survives across idle cycles
 
         valid_out <= valid_in;
     end
-    // else (en=0): hold all state — pipeline stall
 end
 
 endmodule

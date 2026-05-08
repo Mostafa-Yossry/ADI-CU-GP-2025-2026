@@ -6,7 +6,7 @@
 %
 %  MATCHES RTL TESTBENCH:
 %    WL_IN  = 12  -> Q1.11 inputs
-%    WL_OUT = 16  -> Q5.11 outputs
+%    WL_OUT = 12  -> Q5.7 outputs
 %
 %  Uses:
 %    systolic_matmul_8_8__8_1()
@@ -29,6 +29,16 @@
 %
 %  so generated vectors exactly match convergent rounding
 %  hardware behavior.
+%
+%  Fixed-point chain:
+%    Inputs   : Q1.11,  12-bit  (WL_IN=12, FL_IN=11)
+%    Internal : Q1.15,  16-bit  [RTL widens by appending 4 zero LSBs]
+%    Product  : Q2.30,  32-bit  [full precision]
+%    Output   : Q5.7,   12-bit  (WL_OUT=12, FL_OUT=7)  [RIGHT_SH=23]
+%
+%  MULTIPLICATION_TYPES('fixed_point_Z_8x8', 12) gives:
+%    T.Q1_11 = fi(1, 12, 7)  -> Q5.7, 12-bit
+%    storedInteger() scale   = 2^7 = 128
 %
 %% =========================================================================
 
@@ -53,8 +63,8 @@ K_DEPTH = 8;
 WL_IN   = 12;
 FL_IN   = 11;     % Q1.11
 
-WL_OUT  = 16;
-FL_OUT  = 11;     % Q5.11
+WL_OUT  = 12;
+FL_OUT  =  7;     % Q5.7
 
 % -------------------------------------------------------------------------
 % Q1.11 limits
@@ -65,6 +75,9 @@ A_MIN = -2048 / 2048;   % -1.0
 
 %% =========================================================================
 % FIXED-POINT TYPES
+%
+% CRITICAL: pass WL_IN (=12) so MULTIPLICATION_TYPES returns Q5.7 (12-bit).
+%   T.Q1_11 = fi(1, 12, 7)  -> storedInteger scale = 128
 %% =========================================================================
 
 T_Z = MULTIPLICATION_TYPES('fixed_point_Z_8x8', WL_IN);
@@ -216,6 +229,8 @@ fclose(fid_z_imag);
 fprintf('\n');
 fprintf('====================================================\n');
 fprintf('RTL vector generation completed successfully\n');
-fprintf('Output folder : %s\n', output_dir);
+fprintf('Output : %s\n', output_dir);
+fprintf('Format : Q5.7, 12-bit (WL_OUT=%d, FL_OUT=%d)\n', WL_OUT, FL_OUT);
+fprintf('Scale  : storedInteger = value x 2^%d = value x %d\n', FL_OUT, 2^FL_OUT);
 fprintf('====================================================\n');
 fprintf('\n');
