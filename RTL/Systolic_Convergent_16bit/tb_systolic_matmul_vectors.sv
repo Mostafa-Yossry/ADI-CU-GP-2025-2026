@@ -48,6 +48,15 @@ reg rst_n;
 reg en;
 reg start;
 
+integer cycle_counter;
+
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n)
+        cycle_counter <= 0;
+    else
+        cycle_counter <= cycle_counter + 1;
+end
+
 ////////////////////////////////////////////////////////////////////////////////
 // DUT INTERFACE
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,6 +127,7 @@ integer status;
 integer test, row, k, r, tmp, idle;
 integer pass_cnt, fail_cnt;
 integer done_cnt, watchdog;
+integer start_cycle;
 real exp_r, exp_i, err_r, err_i;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +228,9 @@ endtask
 // COLLECT OUTPUTS
 // Captures the LAST valid pulse per row (overwrite on every pulse).
 // done_cnt increments once per row when valid_count[row] reaches K_DEPTH.
+// Each row's counting is gated on cycle_counter >= start_cycle + row so that
+// tail pulses from the previous frame (which arrive before the new frame's
+// wavefront reaches row gr) are not counted.
 ////////////////////////////////////////////////////////////////////////////////
 
 task collect_outputs;
@@ -228,16 +241,27 @@ begin
         got_i[row]       = 0.0;
     end
 
-    done_cnt = 0;
-    watchdog = 0;
+    done_cnt    = 0;
+    watchdog    = 0;
+    start_cycle = -1;
 
     while ((done_cnt < ROWS) && (watchdog < MAX_CYCLES)) begin
         @(posedge clk);
         #1;
         watchdog = watchdog + 1;
 
+        // Capture start_cycle on the posedge after start is driven on negedge
+        if (start && (start_cycle == -1))
+            start_cycle = cycle_counter - 1;
+
         for (row = 0; row < ROWS; row = row + 1) begin
-            if (valid_out[row][0]) begin
+            // Gate: ignore valid_out until this row's frame wavefront arrives.
+            // Row gr's first valid cannot precede start_cycle + gr (skew depth).
+            // This prevents previous-frame tail pulses from being miscounted.
+            if (valid_out[row][0] &&
+                (start_cycle >= 0) &&
+                (cycle_counter >= start_cycle + row)) begin
+
                 got_r[row] = $itor($signed(yhat_real[row][0])) / SCALE_RTL;
                 got_i[row] = $itor($signed(yhat_imag[row][0])) / SCALE_RTL;
                 valid_count[row] = valid_count[row] + 1;
@@ -341,7 +365,6 @@ initial begin
         join
 
         check_results();
-        apply_reset();
     end
 
     $display("");
