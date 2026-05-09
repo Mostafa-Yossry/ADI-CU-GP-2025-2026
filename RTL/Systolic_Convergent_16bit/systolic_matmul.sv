@@ -107,6 +107,10 @@ reg signed [WL_INT-1:0] skew_a_i [0:ROWS-1][0:ROWS-1];
 reg skew_valid  [0:COLS-1][0:COLS-1];
 reg skew_valid2 [0:COLS-1][0:ROWS-1][0:ROWS-1];
 
+// start skew chain — delays the 1-cycle start pulse by gr stages so
+// each PE[gr] receives clear=1 exactly on its k=0 (same timing as its data)
+reg skew_start [0:ROWS-1][0:ROWS-1];
+
 // y skew chains
 reg signed [WL_INT-1:0] skew_y_r [0:COLS-1][0:ROWS-1][0:ROWS-1];
 reg signed [WL_INT-1:0] skew_y_i [0:COLS-1][0:ROWS-1][0:ROWS-1];
@@ -129,6 +133,24 @@ generate
                         skew_a_r[gr][gs] <= skew_a_r[gr][gs-1];
                         skew_a_i[gr][gs] <= skew_a_i[gr][gs-1];
                     end
+                end
+            end
+        end
+    end
+
+    // start pulse per-row delay chains (mirrors skew_a depth)
+    // Row 0: no delay — clear = start directly
+    // Row gr: gr stages, so clear arrives at PE[gr] on its k=0
+    for (gr = 1; gr < ROWS; gr = gr + 1) begin : skew_start_row
+        for (gs = 0; gs < gr; gs = gs + 1) begin : skew_start_stage
+            always @(posedge clk or negedge rst_n) begin
+                if (!rst_n)
+                    skew_start[gr][gs] <= 1'b0;
+                else if (en) begin
+                    if (gs == 0)
+                        skew_start[gr][gs] <= start;
+                    else
+                        skew_start[gr][gs] <= skew_start[gr][gs-1];
                 end
             end
         end
@@ -277,6 +299,14 @@ generate
                 assign pe_valid_in = skew_valid2[gc][gr][gr-1];
             end
 
+            // clear is the skewed start pulse — arrives at PE[gr] on its k=0
+            wire pe_clear;
+            if (gr == 0) begin : sel_clear_row0
+                assign pe_clear = start;
+            end else begin : sel_clear_rowN
+                assign pe_clear = skew_start[gr][gr-1];
+            end
+
             complex_mac_pe #(
                 .WL_OP  (WL_INT),
                 .WL_ACC (WL_OUT)
@@ -284,6 +314,7 @@ generate
                 .clk          (clk),
                 .rst_n        (rst_n),
                 .en           (en),
+                .clear        (pe_clear),
                 .a_real       (pe_a_r_in),
                 .a_imag       (pe_a_i_in),
                 .b_real       (pe_b_r_in),

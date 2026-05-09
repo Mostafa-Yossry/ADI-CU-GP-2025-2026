@@ -53,7 +53,7 @@ module complex_mac_pe #(
     input  wire        clk,
     input  wire        rst_n,
     input  wire        en,
-
+    input wire clear,   // synchronous clear — assert on first cycle of each frame
     input  wire signed [WL_OP-1:0]  a_real,
     input  wire signed [WL_OP-1:0]  a_imag,
     input  wire signed [WL_OP-1:0]  b_real,
@@ -170,10 +170,10 @@ module complex_mac_pe #(
 
       if (valid_in)
       begin
-        acc_real   <= acc_next_real;
-        acc_imag   <= acc_next_imag;
-        e_out_real <= acc_next_real;
-        e_out_imag <= acc_next_imag;
+        acc_real   <= clear ? prod_rounded_real : acc_next_real;
+        acc_imag   <= clear ? prod_rounded_imag : acc_next_imag;
+        e_out_real <= clear ? prod_rounded_real : acc_next_real;
+        e_out_imag <= clear ? prod_rounded_imag : acc_next_imag;
       end
       // else: HOLD acc and e_out across idle cycles
 
@@ -181,10 +181,11 @@ module complex_mac_pe #(
   end
 
 
-always @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n)
+  begin
     if (!rst_n)
-        valid_out <= 1'b0;
+      valid_out <= 1'b0;
     else if (en)
-        valid_out <= valid_in;
-end
+      valid_out <= valid_in;
+  end
 endmodule

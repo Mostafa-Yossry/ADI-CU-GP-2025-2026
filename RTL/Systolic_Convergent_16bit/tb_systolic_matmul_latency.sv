@@ -292,7 +292,8 @@ module tb_systolic_matmul_latency;
 
         row_valid[row] = valid_out[row][0];
 
-        if (row_valid[row])
+        if (row_valid[row] && (start_cycle >= 0) &&
+            (cycle_counter >= start_cycle + row))
         begin
 
           any_valid = 1;
@@ -574,8 +575,8 @@ module tb_systolic_matmul_latency;
 
     $display(
       "  Expected latency : %0d cycles (row0) .. %0d cycles (row7)",
-      K_DEPTH,
-      K_DEPTH + ROWS - 1
+      1,
+      ROWS
     );
 
     $display("==========================================================");
@@ -598,8 +599,6 @@ module tb_systolic_matmul_latency;
       join
 
       check_results();
-
-      apply_reset();
 
     end
 
@@ -624,8 +623,8 @@ module tb_systolic_matmul_latency;
 
     $display(
       "  Expected     : %0d cycles (row0) .. %0d cycles (row7)",
-      K_DEPTH,
-      K_DEPTH + ROWS - 1
+      1,
+      ROWS
     );
 
     $display("==========================================================");
