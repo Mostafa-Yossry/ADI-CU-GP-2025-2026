@@ -1,0 +1,272 @@
+
+# Prompt
+
+I need a synthesizable SystemVerilog implementation of a complex MIMO matched filter block.
+
+The goal is NOT merely functional correctness. The RTL must produce outputs that match a MATLAB fixed-point reference model bit-for-bit using the same arithmetic chain, rounding behavior, overflow behavior, and pipeline ordering.
+
+## Mathematical Operation
+
+Implement:
+
+[
+\hat{y} = H^H y
+]
+
+where:
+
+* (H^H) is a stored complex matrix
+* (y) is a streaming complex input vector
+* each output element is a complex dot product
+
+For row r:
+
+[
+\hat y_r =
+\sum_{k=0}^{K-1}
+(H^H_{r,k} \cdot y_k)
+]
+
+Complex multiplication must be:
+
+[
+(a+jb)(c+jd)
+============
+
+(ac-bd)+j(ad+bc)
+]
+
+---
+
+## RTL Requirements
+
+The implementation must be:
+
+* synthesizable SystemVerilog
+* fully parameterized
+* no vendor-specific IP
+* no DSP instantiation
+* suitable for FPGA or ASIC synthesis
+* use generate loops where appropriate
+
+Parameters must include:
+
+```systemverilog
+parameter int ROWS
+parameter int COLS
+
+parameter int WL_IN
+parameter int INT_BITS_IN
+parameter int FRAC_BITS_IN
+
+parameter int WL_INT
+parameter int INT_BITS_INT
+parameter int FRAC_BITS_INT
+
+parameter int WL_OUT
+parameter int INT_BITS_OUT
+parameter int FRAC_BITS_OUT
+```
+
+Do NOT hardcode any fixed-point format.
+
+All scaling calculations must be derived from the integer and fractional bit parameters.
+
+---
+
+## Fixed-Point Requirements
+
+The implementation must explicitly track:
+
+* word length
+* integer bits
+* fractional bits
+* sign bit
+
+For every arithmetic stage document:
+
+* input format
+* output format
+* growth due to multiplication
+* growth due to addition
+* required shifts
+
+Generate localparams automatically from the fixed-point definitions.
+
+Example:
+
+```systemverilog
+localparam PROD_FRAC =
+    FRAC_BITS_A + FRAC_BITS_B;
+
+localparam PROD_INT =
+    INT_BITS_A + INT_BITS_B;
+```
+
+Do not embed magic numbers.
+
+---
+
+## MATLAB Compatibility Requirement
+
+The RTL must match MATLAB fixed-point behavior exactly.
+
+Assume MATLAB uses:
+
+```matlab
+fimath(
+    'RoundingMethod','Convergent',
+    'OverflowAction','Wrap',
+    ...
+)
+```
+
+Therefore:
+
+### Rounding
+
+Implement convergent rounding (round-to-nearest-even).
+
+Do not use:
+
+```systemverilog
+>>> shift
+```
+
+alone.
+
+Implement:
+
+* guard bit
+* sticky bits
+* tie-to-even logic
+
+identically to MATLAB fi.
+
+---
+
+### Overflow
+
+Use wrap-around arithmetic.
+
+Do not use saturation.
+
+All additions and truncations must naturally wrap exactly like MATLAB fi.
+
+---
+
+## Pipeline Architecture
+
+Implement a fully pipelined architecture.
+
+Requirements:
+
+### Stage 1
+
+Complex multipliers.
+
+Register outputs.
+
+### Stage 2
+
+Fixed-point scaling and convergent rounding.
+
+Register outputs.
+
+### Stage 3+
+
+Balanced adder tree.
+
+Use:
+
+```text
+K inputs
+↓
+K/2
+↓
+K/4
+↓
+...
+↓
+1
+```
+
+Insert registers between adder tree levels.
+
+The number of levels must be automatically derived:
+
+```systemverilog
+$clog2(K)
+```
+
+Do not hardcode:
+
+```systemverilog
+K = 8
+```
+
+The design must work for any power-of-two K.
+
+---
+
+## Matrix Storage
+
+Store Hᴴ internally.
+
+Provide coefficient load interface:
+
+```systemverilog
+hh_load
+
+hh_real[row][col]
+hh_imag[row][col]
+```
+
+Coefficients remain constant until next load.
+
+---
+
+## Valid Pipeline
+
+Implement a valid signal pipeline that exactly tracks datapath latency.
+
+Output:
+
+```systemverilog
+valid_out
+```
+
+must assert when the corresponding output vector becomes valid.
+
+Latency must be derived automatically from the number of pipeline stages.
+
+---
+
+## Code Quality Requirements
+
+Generate:
+
+1. Complete synthesizable SystemVerilog module.
+2. Extensive comments.
+3. Fixed-point format table.
+4. Pipeline latency table.
+5. Explanation of every arithmetic stage.
+6. Explanation of MATLAB equivalence.
+7. No placeholders.
+8. No pseudo-code.
+
+---
+
+## Critical Requirement
+
+The objective is bit-accurate equivalence with a MATLAB fixed-point model.
+
+Whenever there is a choice between:
+
+* minimizing resources
+* preserving exact MATLAB numerical behavior
+
+always preserve MATLAB numerical behavior.
+
+The generated RTL should be suitable for direct comparison against MATLAB-generated test vectors and should produce identical outputs cycle-by-cycle.
+
