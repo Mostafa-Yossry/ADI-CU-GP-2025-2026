@@ -70,7 +70,7 @@
 
 `timescale 1ns/1ps
 
-module tb_matched_filter_pipeW;
+module tb_matched_filter_pipe;
 
 // ---------------------------------------------------------------------------
 // Testbench parameters — must match DUT defaults
@@ -133,6 +133,7 @@ logic signed [WL_IN-1:0]  y_real  [0:COLS-1];
 logic signed [WL_IN-1:0]  y_imag  [0:COLS-1];
 
 logic                      valid_out;
+logic                      gy_enable;
 logic signed [WL_OUT-1:0] yhat_real [0:ROWS-1];
 logic signed [WL_OUT-1:0] yhat_imag [0:ROWS-1];
 
@@ -140,30 +141,31 @@ logic signed [WL_OUT-1:0] yhat_imag [0:ROWS-1];
 // DUT instantiation
 // ---------------------------------------------------------------------------
 matched_filter_pipe #(
-    .ROWS         (ROWS        ),
-    .COLS         (COLS        ),
-    .WL_IN        (WL_IN       ),
-    .INT_BITS_IN  (INT_BITS_IN ),
-    .FRAC_BITS_IN (FRAC_BITS_IN),
-    .WL_INT       (WL_INT      ),
-    .INT_BITS_INT (INT_BITS_INT ),
-    .FRAC_BITS_INT(FRAC_BITS_INT),
-    .WL_OUT       (WL_OUT      ),
-    .INT_BITS_OUT (INT_BITS_OUT ),
-    .FRAC_BITS_OUT(FRAC_BITS_OUT)
+    .MF_ROWS               (ROWS         ),
+    .MF_COLS               (COLS         ),
+    .MF_WL_IN              (WL_IN        ),
+    .MF_INT_BITS_IN        (INT_BITS_IN  ),
+    .MF_FRAC_BITS_IN       (FRAC_BITS_IN ),
+    .MF_INTERNAL_WL        (WL_INT       ),
+    .MF_INTERNAL_INT_BITS  (INT_BITS_INT ),
+    .MF_INTERNAL_FRAC_BITS (FRAC_BITS_INT),
+    .MF_WL_OUT             (WL_OUT       ),
+    .MF_INT_BITS_OUT       (INT_BITS_OUT ),
+    .MF_FRAC_BITS_OUT      (FRAC_BITS_OUT)
 ) dut (
-    .clk      (clk      ),
-    .rst_n    (rst_n    ),
-    .en       (en       ),
-    .hh_load  (hh_load  ),
-    .hh_real  (hh_real  ),
-    .hh_imag  (hh_imag  ),
-    .valid_in (valid_in ),
-    .y_real   (y_real   ),
-    .y_imag   (y_imag   ),
-    .valid_out(valid_out),
-    .yhat_real(yhat_real),
-    .yhat_imag(yhat_imag)
+    .clk                   (clk          ),
+    .rst_n                 (rst_n        ),
+    .en                    (en           ),
+    .hh_load               (hh_load      ),
+    .hh_real               (hh_real      ),
+    .hh_imag               (hh_imag      ),
+    .valid_in              (valid_in     ),
+    .y_real                (y_real       ),
+    .y_imag                (y_imag       ),
+    .valid_out             (valid_out    ),
+    .gy_enable             (gy_enable    ),
+    .yhat_real             (yhat_real    ),
+    .yhat_imag             (yhat_imag    )
 );
 
 // ---------------------------------------------------------------------------

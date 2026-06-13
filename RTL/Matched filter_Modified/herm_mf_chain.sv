@@ -1,197 +1,346 @@
 // =============================================================================
 // herm_mf_chain.sv
 // -----------------------------------------------------------------------------
-// Top-level wrapper that connects hermitian_pipe to matched_filter_pipe,
-// realising the full  z = H^H · y  pipeline from raw H and y inputs.
+// Integration wrapper: hermitian_pipe → matched_filter_pipe
 //
-// Block diagram
-// -------------
+// Implements the sub-chain:
 //
-//   h_real/imag ──► hermitian_pipe ──► (hh_real/imag) ──► matched_filter_pipe ──► z_real/imag
-//   h_valid_in  ──►       │                 hh_load ──►           │
-//                    valid_out ─────────────────────               │
-//   y_real/imag ─────────────────────────────────────────────────►│
-//   y_valid_in  ─────────────────────────────────────────────────►│
-//                                                            valid_out ──► z_valid_out
+//   H (from channel estimator / top port)
+//        │
+//        ▼
+//   hermitian_pipe          H^H = conj(H)^T
+//        │  hh_load (1-cycle pulse on valid_out)
+//        ▼
+//   matched_filter_pipe     z = H^H · y
+//        │
+//        ▼
+//   z (→ Phase 2 forward substitution)
+//   gy_enable (sticky pipeline-primed flag → Phase 2 input enable)
 //
-// Timing contract
-// ---------------
-//   The hermitian_pipe (REGISTER_OUTPUT=1) has 1-cycle latency:
-//     Cycle N posedge : hermitian_pipe registers H^H from h_real/imag; valid_out=1
-//     Cycle N negedge : hh_load = hermitian valid_out = 1, seen by matched_filter_pipe
-//     Cycle N+1 posedge: matched_filter_pipe latches H^H coefficients
+// -----------------------------------------------------------------------------
+// Interface contract with the parent top module
+// -----------------------------------------------------------------------------
+// This module is designed to slot into top_mimo_linear_solver_complex_pipelined.
+// It matches that module's port conventions exactly:
 //
-//   matched_filter_pipe requires hh_load exactly 1 cycle before the y valid_in
-//   that uses those coefficients.  Therefore:
+//   clk, rst         — parent uses active-high rst; we invert internally
+//   y_re_flat / y_im_flat — N*WIDTH-bit flat buses, 16-bit elements, Q0.11 data
+//   H ports           — N*WIDTH-bit flat buses added here (Risk 7 resolution);
+//                       16-bit elements, Q0.11 data (same convention as y)
+//   h_valid           — 1-cycle pulse: "new H matrix available"
+//   y_valid           — per-vector strobe from upstream
+//   z_re_flat / z_im_flat — N*16-bit flat output buses (Q4.11 elements)
+//   z_valid           — output valid strobe
+//   gy_enable         — sticky flag; route to Phase 2 input enable in parent
 //
-//     h_valid_in must be asserted exactly 1 cycle before y_valid_in.
+// -----------------------------------------------------------------------------
+// Fixed-point format summary (verified, must not change — see handoff §3)
+// -----------------------------------------------------------------------------
+//   Input H, y   Q0.11   WL_IN=12   (12-bit signed; packed in 16-bit slots)
+//   Internal     Q0.15   WL_INT=16
+//   Product      Q0.30   WL_PROD=32
+//   Output z     Q4.11   WL_OUT=16
 //
-//   For a streaming back-to-back burst with a new H and y every cycle:
-//     - Assert h_valid_in for frame N on cycle N
-//     - Assert y_valid_in for frame N on cycle N+1
-//     The chain produces z for frame N on cycle N + 1 + MF_LATENCY.
+// -----------------------------------------------------------------------------
+// WIDTH vs WL_IN resolution (handoff Risk 1)
+// -----------------------------------------------------------------------------
+// The parent's flat buses carry WIDTH=16-bit slots.  The sub-modules need
+// WL_IN=12-bit Q0.11 values.  A 16-bit signed word holding a Q0.11 value has
+// its useful content in [11:0]; bits [15:12] are sign extension.  Therefore
+// the slice [i*WIDTH +: 12] (equivalently [i*WIDTH+11 : i*WIDTH]) extracts
+// the correct 12-bit Q0.11 word without any numerical conversion.  No rounding,
+// no saturation.  This is a pure width slice.
 //
-//   Total chain latency = 1 (hermitian) + MF_LATENCY (matched filter)
-//                       = 1 + 1 + $clog2(COLS) cycles
-//                       = 5 cycles for the default 8×8 configuration.
+// -----------------------------------------------------------------------------
+// Pipeline latency (REGISTER_OUTPUT=1, N=8)
+// -----------------------------------------------------------------------------
+//   u_herm  LATENCY = 1 cycle
+//   u_mf    LATENCY = 1 + $clog2(N) = 4 cycles   (for N=8)
+//   TOTAL           = 5 cycles from h_valid (= herm_valid_in) to z_valid
 //
-// Port naming
-// -----------
-//   H input:  ROWS_H × COLS_H  (hermitian_pipe ROWS/COLS parameters)
-//   y input:  COLS_H elements  (dot-product length = columns of H)
-//   z output: COLS_H elements  (rows of H^H = columns of H)
+// -----------------------------------------------------------------------------
+// Flow controller rules (handoff §6e)
+// -----------------------------------------------------------------------------
+//   Rule 1: herm_valid_in = h_valid_req & mf_en
+//           (herm has no en; gating valid_in is the only backpressure)
+//   Rule 2: mf_valid_in = herm_valid_in delayed 1 cycle
+//           (fires on same posedge as hh_load_w = herm.valid_out)
+//   Rule 3: h_valid_req must be a 1-cycle pulse; no overlap with in-flight y
+//   Rule 4: mf_en=0 propagates to both modules via Rule 1
 //
-//   For the default square case ROWS_H == COLS_H == 8:
-//     H^H is 8×8, y is length-8, z is length-8.
-//
-// Parameters
-// ----------
-//   ROWS_H        – rows of H    (= columns of H^H = output length of z)
-//   COLS_H        – columns of H (= rows of H^H = dot-product length)
-//                   MUST be a power of two (matched filter constraint)
-//   WL_IN         – word length for H, H^H, and y  (Q format input)
-//   INT_BITS_IN   – integer bits of input format
-//   FRAC_BITS_IN  – fractional bits of input format
-//   WL_INT        – matched filter internal widened word length
-//   INT_BITS_INT  – integer bits of internal format
-//   FRAC_BITS_INT – fractional bits of internal format
-//   WL_OUT        – matched filter output word length
-//   INT_BITS_OUT  – integer bits of output format
-//   FRAC_BITS_OUT – fractional bits of output format
 // =============================================================================
 
 module herm_mf_chain #(
-    parameter int ROWS_H         = 8,
-    parameter int COLS_H         = 8,
-
-    parameter int WL_IN          = 12,
-    parameter int INT_BITS_IN    =  0,
-    parameter int FRAC_BITS_IN   = 11,
-
-    parameter int WL_INT         = 16,
-    parameter int INT_BITS_INT   =  0,
-    parameter int FRAC_BITS_INT  = 15,
-
-    parameter int WL_OUT         = 16,
-    parameter int INT_BITS_OUT   =  4,
-    parameter int FRAC_BITS_OUT  = 11
+    // -------------------------------------------------------------------------
+    // Sizing — must match parent top_mimo_linear_solver_complex_pipelined
+    // -------------------------------------------------------------------------
+    parameter int N     = 8,    // Matrix dimension (NxN); MUST be power of two
+    parameter int WIDTH = 16    // Slot width of parent flat buses (bits)
+                                // Sub-module WL_IN=12 is fixed; see note above
 )(
-    input  logic clk,
-    input  logic rst_n,
-    input  logic en,                   // matched-filter pipeline enable
+    input  logic                         clk,
+    input  logic                         rst,          // active-HIGH (matches parent)
 
     // -------------------------------------------------------------------------
-    // H matrix input  (feeds hermitian_pipe)
-    //   Assert h_valid_in for one cycle to latch a new channel matrix.
-    //   Must be asserted exactly 1 cycle before the corresponding y_valid_in.
+    // H matrix input  (new channel estimate; assert h_valid for exactly 1 cycle)
+    // No H port exists on the parent top — added here per handoff Risk 7.
+    // In silicon this connects to the channel estimator output.
+    // In the integration TB it is driven from H_real.txt / H_imag.txt.
     // -------------------------------------------------------------------------
-    input  logic                      h_valid_in,
-    input  logic signed [WL_IN-1:0]  h_real [0:ROWS_H-1][0:COLS_H-1],
-    input  logic signed [WL_IN-1:0]  h_imag [0:ROWS_H-1][0:COLS_H-1],
+    input  logic                         h_valid,      // 1-cycle load pulse
+    input  logic signed [N*WIDTH-1:0]    h_re_flat,    // row-major, 16-bit slots
+    input  logic signed [N*WIDTH-1:0]    h_im_flat,    // Q0.11 data in [11:0]
 
     // -------------------------------------------------------------------------
-    // y vector input  (feeds matched_filter_pipe directly)
-    //   Assert y_valid_in each cycle a new received vector is presented.
+    // y vector streaming input  (one N-element vector per valid cycle)
+    // Same bus format as parent's y_re_flat / y_im_flat.
     // -------------------------------------------------------------------------
-    input  logic                      y_valid_in,
-    input  logic signed [WL_IN-1:0]  y_real [0:COLS_H-1],
-    input  logic signed [WL_IN-1:0]  y_imag [0:COLS_H-1],
+    input  logic                         y_valid,
+    input  logic signed [N*WIDTH-1:0]    y_re_flat,
+    input  logic signed [N*WIDTH-1:0]    y_im_flat,
 
     // -------------------------------------------------------------------------
-    // z output  (valid_out asserts 1 + MF_LATENCY cycles after y_valid_in)
+    // Pipeline enable  (tie high for free-running; deassert to stall)
+    // When mf_en=0 the entire pipeline (both sub-modules) freezes.
+    // The flow controller deasserts herm_valid_in simultaneously (Rule 1).
     // -------------------------------------------------------------------------
-    output logic                      z_valid_out,
-    output logic signed [WL_OUT-1:0] z_real [0:COLS_H-1],
-    output logic signed [WL_OUT-1:0] z_imag [0:COLS_H-1]
+    input  logic                         mf_en,
+
+    // -------------------------------------------------------------------------
+    // z vector output  (= H^H · y, Q4.11, 16-bit slots, N*16-bit flat)
+    // -------------------------------------------------------------------------
+    output logic                         z_valid,
+    output logic signed [N*WIDTH-1:0]    z_re_flat,
+    output logic signed [N*WIDTH-1:0]    z_im_flat,
+
+    // -------------------------------------------------------------------------
+    // gy_enable: sticky "pipeline primed" flag.
+    // 0 after reset; latches to 1 on the first z_valid; never clears until rst.
+    // Route to Phase 2 forward substitution input enable in the parent.
+    // -------------------------------------------------------------------------
+    output logic                         gy_enable
 );
 
 // =============================================================================
-// Internal wires between hermitian_pipe and matched_filter_pipe
+// Part 1 — Internal fixed-point widths (verified constants, never track WIDTH)
 // =============================================================================
 
-    // hermitian_pipe output → matched_filter_pipe coefficient input
-    // Shape: [0:COLS_H-1][0:ROWS_H-1]
-    // For the square case (COLS_H == ROWS_H) this matches matched_filter_pipe's
-    // [0:ROWS-1][0:COLS-1] port directly.
-    logic signed [WL_IN-1:0] hh_real_w [0:COLS_H-1][0:ROWS_H-1];
-    logic signed [WL_IN-1:0] hh_imag_w [0:COLS_H-1][0:ROWS_H-1];
+    localparam int WL_IN         = 12;   // Q0.11 input
+    localparam int INT_BITS_IN   =  0;
+    localparam int FRAC_BITS_IN  = 11;
 
-    // hermitian valid_out drives matched_filter hh_load directly
-    logic hh_load_w;
+    localparam int WL_INT        = 16;   // Q0.15 internal
+    localparam int INT_BITS_INT  =  0;
+    localparam int FRAC_BITS_INT = 15;
+
+    localparam int WL_OUT        = 16;   // Q4.11 output
+    localparam int INT_BITS_OUT  =  4;
+    localparam int FRAC_BITS_OUT = 11;
 
 
 // =============================================================================
-// hermitian_pipe instance
+// Part 2 — Reset polarity adapter (handoff Risk 2)
+// Parent: active-high rst.  Sub-modules: active-low rst_n.
+// Single inverter; applied to both sub-module rst_n ports.
+// =============================================================================
+
+    logic rst_n_int;
+    assign rst_n_int = ~rst;
+
+
+// =============================================================================
+// Part 3 — Unpacked arrays for sub-module ports
+// =============================================================================
+
+    // H matrix — hermitian_pipe input
+    logic signed [WL_IN-1:0] h_real_arr [0:N-1][0:N-1];
+    logic signed [WL_IN-1:0] h_imag_arr [0:N-1][0:N-1];
+
+    // H^H — internal wire between hermitian_pipe and matched_filter_pipe
+    logic signed [WL_IN-1:0] hh_real_w  [0:N-1][0:N-1];
+    logic signed [WL_IN-1:0] hh_imag_w  [0:N-1][0:N-1];
+    logic                    hh_load_w;              // = u_herm.valid_out
+
+    // y vector — matched_filter_pipe input
+    logic signed [WL_IN-1:0] y_real_arr [0:N-1];
+    logic signed [WL_IN-1:0] y_imag_arr [0:N-1];
+
+    // z vector — matched_filter_pipe output (unpacked; re-packed to flat below)
+    logic signed [WL_OUT-1:0] z_real_arr [0:N-1];
+    logic signed [WL_OUT-1:0] z_imag_arr [0:N-1];
+
+
+// =============================================================================
+// Part 4 — Flat-bus → unpacked array unpacking
+// -----------------------------------------------------------------------------
+// WIDTH=16 slot, WL_IN=12: extract [11:0] of each 16-bit slot.
+// Bits [15:12] are sign extension of the Q0.11 value — discarded safely.
+// Layout: element i occupies bits [i*WIDTH +: WIDTH]; Q0.11 data in [11:0].
+// =============================================================================
+
+    generate
+        for (genvar i = 0; i < N; i++) begin : g_unpack
+
+            // H matrix — row-major: element [r][c] at index r*N+c
+            for (genvar j = 0; j < N; j++) begin : g_unpack_h
+                assign h_real_arr[i][j] =
+                    h_re_flat[(i*N + j)*WIDTH +: WL_IN];
+                assign h_imag_arr[i][j] =
+                    h_im_flat[(i*N + j)*WIDTH +: WL_IN];
+            end
+
+            // y vector — element i at slot i
+            assign y_real_arr[i] = y_re_flat[i*WIDTH +: WL_IN];
+            assign y_imag_arr[i] = y_im_flat[i*WIDTH +: WL_IN];
+
+        end
+    endgenerate
+
+
+// =============================================================================
+// Part 5 — Flow controller  (handoff §6e Rules 1–4)
+// =============================================================================
+
+    logic herm_valid_in;   // gated h_valid request → hermitian_pipe.valid_in
+    logic mf_valid_in;     // delayed herm_valid_in → matched_filter_pipe.valid_in
+
+    // -------------------------------------------------------------------------
+    // Rule 1: Gate herm.valid_in with mf_en.
+    // hermitian_pipe has no en port.  If valid_in fires while mf_en=0, the
+    // resulting hh_load_w pulse would overwrite coef registers in a frozen MF
+    // pipeline, corrupting the next output frame.
+    // -------------------------------------------------------------------------
+    assign herm_valid_in = h_valid & mf_en;
+
+    // -------------------------------------------------------------------------
+    // Rule 2: mf.valid_in = herm.valid_in delayed exactly 1 cycle.
+    // herm.valid_out (= hh_load_w) fires 1 cycle after herm.valid_in.
+    // mf.valid_in must fire on the SAME posedge as hh_load_w so that Stage 1
+    // samples coefs (registered at posedge C+1) on the following posedge C+2.
+    // Registering herm_valid_in by 1 cycle gives exactly this relationship.
+    // -------------------------------------------------------------------------
+    always_ff @(posedge clk or negedge rst_n_int) begin
+        if (!rst_n_int) mf_valid_in <= 1'b0;
+        else            mf_valid_in <= herm_valid_in;
+    end
+
+    // Rule 3 (caller responsibility): h_valid must be a 1-cycle pulse with no
+    // other mf.valid_in active at the same posedge.  The UPDATE_INTERVAL
+    // (50*N cycles) in the parent guarantees sufficient separation.
+    //
+    // Rule 4: mf_en=0 → herm_valid_in=0 (Rule 1) → mf_valid_in goes 0 one
+    // cycle later.  No new valid_in reaches the frozen MF.  Fully handled.
+
+
+// =============================================================================
+// Part 6 — hermitian_pipe instantiation
 // =============================================================================
 
     hermitian_pipe #(
-        .ROWS            (ROWS_H       ),
-        .COLS            (COLS_H       ),
-        .WL              (WL_IN        ),
-        .INT_BITS        (INT_BITS_IN  ),
-        .FRAC_BITS       (FRAC_BITS_IN ),
-        .REGISTER_OUTPUT (1            )   // 1-cycle latency; fills hh_load timing gap
-    ) u_hermitian (
-        .clk      (clk        ),
-        .rst_n    (rst_n      ),
-        .valid_in (h_valid_in ),
-        .h_real   (h_real     ),
-        .h_imag   (h_imag     ),
-        .valid_out(hh_load_w  ),
-        .hh_real  (hh_real_w  ),
-        .hh_imag  (hh_imag_w  )
+        .ROWS           (N      ),
+        .COLS           (N      ),
+        .WL             (WL_IN  ),    // 12 — Q0.11 verified
+        .INT_BITS       (INT_BITS_IN  ),
+        .FRAC_BITS      (FRAC_BITS_IN ),
+        .REGISTER_OUTPUT(1      )     // latency=1; hh_load_w = valid_out
+    ) u_herm (
+        .clk      (clk           ),
+        .rst_n    (rst_n_int     ),
+        .valid_in (herm_valid_in ),   // flow-controller gated (Rule 1)
+        .h_real   (h_real_arr   ),
+        .h_imag   (h_imag_arr   ),
+        .valid_out(hh_load_w    ),   // directly drives u_mf.hh_load (Rule 2 source)
+        .hh_real  (hh_real_w    ),
+        .hh_imag  (hh_imag_w    )
     );
 
 
 // =============================================================================
-// matched_filter_pipe instance
+// Part 7 — matched_filter_pipe instantiation
 // =============================================================================
 
     matched_filter_pipe #(
-        .ROWS          (COLS_H        ),   // H^H has COLS_H rows  (= columns of H)
-        .COLS          (ROWS_H        ),   // H^H has ROWS_H cols  (= rows of H)
-                                           // MUST be power of two
-        .WL_IN         (WL_IN        ),
-        .INT_BITS_IN   (INT_BITS_IN  ),
-        .FRAC_BITS_IN  (FRAC_BITS_IN ),
-        .WL_INT        (WL_INT       ),
-        .INT_BITS_INT  (INT_BITS_INT ),
-        .FRAC_BITS_INT (FRAC_BITS_INT),
-        .WL_OUT        (WL_OUT       ),
-        .INT_BITS_OUT  (INT_BITS_OUT ),
-        .FRAC_BITS_OUT (FRAC_BITS_OUT)
-    ) u_matched_filter (
-        .clk      (clk       ),
-        .rst_n    (rst_n     ),
-        .en       (en        ),
-        .hh_load  (hh_load_w ),
-        .hh_real  (hh_real_w ),
-        .hh_imag  (hh_imag_w ),
-        .valid_in (y_valid_in),
-        .y_real   (y_real    ),
-        .y_imag   (y_imag    ),
-        .valid_out(z_valid_out),
-        .yhat_real(z_real    ),
-        .yhat_imag(z_imag    )
+        .ROWS         (N             ),
+        .COLS         (N             ),   // N must be power of two
+        .WL_IN        (WL_IN         ),   // 12
+        .INT_BITS_IN  (INT_BITS_IN   ),   //  0
+        .FRAC_BITS_IN (FRAC_BITS_IN  ),   // 11
+        .WL_INT       (WL_INT        ),   // 16
+        .INT_BITS_INT (INT_BITS_INT  ),   //  0
+        .FRAC_BITS_INT(FRAC_BITS_INT ),   // 15
+        .WL_OUT       (WL_OUT        ),   // 16
+        .INT_BITS_OUT (INT_BITS_OUT  ),   //  4
+        .FRAC_BITS_OUT(FRAC_BITS_OUT )    // 11
+    ) u_mf (
+        .clk      (clk          ),
+        .rst_n    (rst_n_int    ),
+        .en       (mf_en        ),
+        // Coefficient load — driven by u_herm.valid_out (hh_load_w).
+        // hh_load is independent of en (by MF design); coefs latch regardless
+        // of pipeline state.  Flow controller Rule 1 prevents this from firing
+        // while the pipeline is frozen.
+        .hh_load  (hh_load_w   ),
+        .hh_real  (hh_real_w   ),
+        .hh_imag  (hh_imag_w   ),
+        // Streaming y input
+        .valid_in (mf_valid_in ),   // Rule 2: 1 cycle after herm_valid_in
+        .y_real   (y_real_arr  ),
+        .y_imag   (y_imag_arr  ),
+        // Outputs
+        .valid_out(z_valid      ),
+        .gy_enable(gy_enable    ),   // → Phase 2 input enable in parent
+        .yhat_real(z_real_arr   ),
+        .yhat_imag(z_imag_arr   )
     );
 
 
 // =============================================================================
-// Simulation-only: chain latency display
+// Part 8 — Unpacked z arrays → flat output buses
+// -----------------------------------------------------------------------------
+// WL_OUT=16 == WIDTH=16 here, so each element fills its slot exactly.
+// Written as a generate for robustness in case WIDTH ever diverges from WL_OUT.
+// The upper (WIDTH - WL_OUT) bits are sign-extended.
 // =============================================================================
-`ifdef SIMULATION
-    localparam int MF_LEVELS  = $clog2(ROWS_H);
-    localparam int MF_LATENCY = 1 + MF_LEVELS;
-    localparam int CHAIN_LAT  = 1 + MF_LATENCY;   // 1 hermitian + matched filter
 
-    initial begin
-        $display("[herm_mf_chain] ROWS_H=%0d COLS_H=%0d WL_IN=%0d WL_OUT=%0d",
-                 ROWS_H, COLS_H, WL_IN, WL_OUT);
-        $display("[herm_mf_chain] MF_LATENCY=%0d  CHAIN_LATENCY=%0d cycles",
-                 MF_LATENCY, CHAIN_LAT);
-        $display("[herm_mf_chain] Timing: h_valid_in[N] must precede y_valid_in[N] by 1 cycle");
+    generate
+        for (genvar i = 0; i < N; i++) begin : g_pack_z
+            assign z_re_flat[i*WIDTH +: WL_OUT] =
+                z_real_arr[i];
+            assign z_im_flat[i*WIDTH +: WL_OUT] =
+                z_imag_arr[i];
+
+            // Sign-extend if WIDTH > WL_OUT (defensive; currently WIDTH==WL_OUT==16)
+            if (WIDTH > WL_OUT) begin : g_sign_ext_z
+                assign z_re_flat[i*WIDTH + WL_OUT +: (WIDTH - WL_OUT)] =
+                    {(WIDTH - WL_OUT){z_real_arr[i][WL_OUT-1]}};
+                assign z_im_flat[i*WIDTH + WL_OUT +: (WIDTH - WL_OUT)] =
+                    {(WIDTH - WL_OUT){z_imag_arr[i][WL_OUT-1]}};
+            end
+        end
+    endgenerate
+
+
+// =============================================================================
+// Part 9 — Elaboration-time guards
+// =============================================================================
+
+`ifdef SIMULATION
+    initial begin : elab_checks
+        // N must be power of two (MF adder tree requirement)
+        if ((N & (N - 1)) != 0)
+            $fatal(1, "herm_mf_chain: N=%0d must be a power of two", N);
+        // WIDTH must accommodate the 12-bit Q0.11 slice
+        if (WIDTH < WL_IN)
+            $fatal(1, "herm_mf_chain: WIDTH=%0d < WL_IN=%0d; cannot slice Q0.11 from flat bus",
+                   WIDTH, WL_IN);
+        // H flat bus must be wide enough for N*N elements
+        // (structural — if N or WIDTH change this catches mismatches)
+        $display("[herm_mf_chain] N=%0d WIDTH=%0d WL_IN=%0d WL_OUT=%0d TOTAL_LAT=%0d",
+                 N, WIDTH, WL_IN, WL_OUT,
+                 u_herm.LATENCY + u_mf.LATENCY);
     end
 `endif
+
 
 endmodule
 

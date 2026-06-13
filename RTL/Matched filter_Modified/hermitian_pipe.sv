@@ -182,7 +182,7 @@
 // compute the correct valid_in offset generically without hardcoding 0 or 1.
 // =============================================================================
 
-module hermitian_pipe #(
+module hermitian_pipeW #(
     // -------------------------------------------------------------------------
     // Matrix dimensions:  H is ROWS x COLS,  H^H is COLS x ROWS
     // -------------------------------------------------------------------------
