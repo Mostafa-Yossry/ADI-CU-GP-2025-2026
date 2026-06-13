@@ -42,9 +42,27 @@
 // │  Cycle 3 … Cycle 1+LEVELS                                               │
 // │           │  Tree levels 1…LEVELS-1: each adds one pipeline register    │
 // │  Cycle 1+LEVELS  │  valid_out asserts; yhat_real/imag valid             │
+// │                  │  gy_enable asserts for the first time (sticky)       │
 // │  Total latency   │  LATENCY = 1 + LEVELS = 1 + $clog2(COLS)  cycles    │
 // │  Default (COLS=8): LATENCY = 4 cycles                                   │
 // └──────────┴──────────────────────────────────────────────────────────────┘
+//
+// LATENCY is a localparam (Part 1), not a module parameter, but it is fully
+// accessible to a wrapper or testbench via hierarchical reference once the
+// module is instantiated, e.g.:
+//
+//   matched_filter_pipe #(...) u_mf (...);
+//   localparam int MF_LAT = u_mf.LATENCY;   // = 1 + $clog2(COLS)
+//
+// This requires no RTL change -- SystemVerilog exposes instance localparams
+// hierarchically by default. A wrapper can use this value to size drain
+// counters / timing checks without duplicating the $clog2(COLS) computation.
+//
+// gy_enable
+// ---------
+//   A sticky "pipeline primed" flag: 0 after reset, latches to 1 on the
+//   first cycle valid_out asserts, and remains 1 until the next rst_n.
+//   See Part 8b for the implementation (1 FF + 1 assign, purely additive).
 //
 // Parameters
 // ----------
@@ -129,8 +147,18 @@ module matched_filter_pipe #(
     // -------------------------------------------------------------------------
     // Output:  valid_out asserts LATENCY cycles after valid_in
     //          LATENCY = 1 + $clog2(COLS)
+    //
+    //   gy_enable: asserts on the rising edge of the FIRST valid_out after
+    //              reset, and stays high thereafter (until the next rst_n).
+    //              Intended as a "pipeline primed" flag for downstream logic:
+    //              it implicitly confirms that BOTH a valid H^H load AND a
+    //              valid y vector have flowed completely through the LATENCY-
+    //              deep pipeline at least once. Does not deassert if en is
+    //              later lowered or if hh_load fires again -- a full reset
+    //              is required to clear it.
     // -------------------------------------------------------------------------
     output logic                      valid_out,
+    output logic                      gy_enable,
     output logic signed [WL_OUT-1:0] yhat_real [0:ROWS-1],
     output logic signed [WL_OUT-1:0] yhat_imag [0:ROWS-1]
 );
@@ -670,6 +698,21 @@ module matched_filter_pipe #(
     endgenerate
 
     assign valid_out = tree_valid[LEVELS-1];
+
+
+// =============================================================================
+// Part 8b – gy_enable: "pipeline primed" sticky flag
+// -----------------------------------------------------------------------------
+// Set on the first valid_out after reset, never cleared except by rst_n.
+// Requires zero changes to any existing logic -- purely additive.
+// =============================================================================
+
+    logic gy_enable_r;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n)          gy_enable_r <= 1'b0;
+        else if (valid_out)  gy_enable_r <= 1'b1;   // set on first output, never cleared
+    end
+    assign gy_enable = gy_enable_r;
 
 
 // =============================================================================

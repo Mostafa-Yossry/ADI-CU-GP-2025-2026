@@ -16,8 +16,13 @@
 //     2. Resumes correctly after en is re-asserted; every output matches the
 //        same golden result it would have produced without the stall.
 //     3. Latency for in-flight frames is extended by exactly STALL_CYCLES.
-//     4. hh_load fires during the stall window and updates coef registers even
-//        while en=0; the first valid_in after the stall uses the new coefs.
+//     4. hh_load fires during the stall window and updates coef_real/coef_imag
+//        even while en=0 (CHECK 4, verified directly via hierarchical
+//        reference to dut.coef_real/coef_imag).
+//     5. A coefficient load registered one cycle ahead of valid_in is
+//        correctly used by that frame (CHECK 5, the normal hh_load timing
+//        constraint, exercised with "sentinel" coefficient/y values chosen
+//        so the expected output is a simple analytical constant).
 //
 // HOW Suite B WORKS
 // -----------------
@@ -25,8 +30,12 @@
 // frames.  After frame STALL_FRAME_IDX has been accepted (i.e. on the
 // negedge after its posedge), en is de-asserted for STALL_CYCLES cycles.
 // During that window hh_load is pulsed once with a "sentinel" coefficient
-// set chosen to produce a known, distinct output so we can confirm the coef
-// update took effect on the first post-stall frame.
+// set; CHECK 4 reads the coefficient registers directly right after the
+// stall to confirm the load took effect. The coefficient bank holds only
+// ONE set at a time, so this sentinel set is then overwritten by the normal
+// overlap scheme for post-stall frames -- CHECK 5 separately re-loads the
+// sentinel set one cycle ahead of the dedicated sentinel frame (index
+// STALL_TESTS-1) to verify it is correctly used.
 //
 // A separate collector (stall_collector_proc) captures every valid_out
 // independently of Suite A.
@@ -48,14 +57,15 @@
 //     exactly STALL_CYCLES cycles compared to the unstalled case.
 //   Frames after the stall: normal PIPE_LAT latency from their own vin_cycle.
 //
-// IMPORTANT: hh_load is NOT gated by en (by design).  Suite B explicitly
-// verifies this by loading a sentinel coef set during the stall, then
-// checking that the post-stall output uses those new coefs.
+// IMPORTANT: hh_load is NOT gated by en (by design). CHECK 4 verifies this
+// directly via the coefficient registers.
 //
 // en-STALL valid_out GUARD
 // ------------------------
-// During the stall, stall_collector_proc checks every posedge; any spurious
-// valid_out during the frozen window is flagged as a FAIL immediately.
+// stall_collector_proc waits on the stall_window_active flag (driven by the
+// injector for exactly the STALL_CYCLES en=0 posedges), then checks every
+// posedge in that window; any spurious valid_out is flagged as a FAIL
+// immediately.
 // =============================================================================
 
 `timescale 1ns/1ps
@@ -193,6 +203,16 @@ logic collect_done;
 localparam logic signed [WL_IN-1:0] SENTINEL_COEF = 12'sh200;
 localparam logic signed [WL_IN-1:0] SENTINEL_Y    = 12'sh100;  // 0.125 in Q0.11
 
+// Widened (internal-format) sentinel coefficient, computed with the exact
+// same sign-extend + zero-pad formula the DUT uses for hh_real/hh_imag
+// (Part 3). Used by CHECK 4 to verify the coefficient registers directly
+// via hierarchical reference right after hh_load fires during the stall.
+localparam int FRAC_WIDEN_TB = FRAC_BITS_INT - FRAC_BITS_IN;          // 4 default
+localparam logic signed [WL_INT-1:0] SENTINEL_COEF_W = signed'(
+    {{(WL_INT - WL_IN - FRAC_WIDEN_TB){SENTINEL_COEF[WL_IN-1]}},
+       SENTINEL_COEF,
+     {FRAC_WIDEN_TB{1'b0}}});
+
 // Captured stall-test outputs
 integer svout_cycle [0:STALL_TESTS-1];  // vout cycle for each stall-burst frame
 real    sgot_r      [0:STALL_TESTS-1][0:ROWS-1];
@@ -205,7 +225,11 @@ real    sentinel_gold_i [0:ROWS-1];
 // Stall-test inter-process synchronisation
 logic stall_vectors_ready;
 logic stall_collect_done;
-integer stall_spurious_vout;   // count of valid_out pulses seen during stall window
+logic stall_window_active;   // driven 1 by injector for exactly the en=0 window
+integer stall_spurious_vout; // count of valid_out pulses seen during stall window
+
+// CHECK 4 (direct coef-register check) results, filled in by stall_injector_proc
+integer check4a_pass, check4a_fail;
 
 
 // ===========================================================================
@@ -226,7 +250,10 @@ initial begin : main_proc
     collect_done        = 1'b0;
     stall_vectors_ready = 1'b0;
     stall_collect_done  = 1'b0;
+    stall_window_active = 1'b0;
     stall_spurious_vout = 0;
+    check4a_pass        = 0;
+    check4a_fail        = 0;
 
     pass_cnt  = 0;  fail_cnt  = 0;
     lat_min   = 32767; lat_max = 0; lat_sum = 0; lat_count = 0;
@@ -516,7 +543,8 @@ initial begin : main_proc
         //     Injected after the stall.  Normal latency = PIPE_LAT.
         //
         //   Frame STALL_TESTS-1 (sentinel frame):
-        //     Uses the coef set loaded during the stall.  Normal PIPE_LAT.
+        //     Uses the SENTINEL coef set, loaded one cycle ahead of its
+        //     valid_in (Phase 3's last iteration). Normal PIPE_LAT.
         //
         // Note: because the stall is inserted after STALL_FRAME_IDX's
         // valid_in posedge, STALL_FRAME_IDX+1 .. STALL_FRAME_IDX + PIPE_LAT
@@ -575,13 +603,33 @@ initial begin : main_proc
             end
         end
 
-        // --- Check 4: sentinel frame confirms coef update during stall ---
+        // --- Check 4: hh_load during stall updates coef registers directly ---
+        //
+        // Verified by stall_injector_proc via hierarchical reference
+        // (dut.coef_real / dut.coef_imag) immediately after the stall
+        // window, before Phase 3's overlap scheme begins overwriting the
+        // coefficient bank. Results were accumulated into check4a_pass/fail.
+        $display("");
+        $display("  CHECK 4: hh_load during stall (en=0) updates coef_real/coef_imag");
+        $display("  (verified via dut.coef_real/coef_imag == widened SENTINEL_COEF, all %0dx%0d elements)",
+                 ROWS, COLS);
+        if (check4a_fail == 0) begin
+            $display("  coef register check: PASS=%0d FAIL=%0d  PASS", check4a_pass, check4a_fail);
+        end else begin
+            $display("  coef register check: PASS=%0d FAIL=%0d  FAIL", check4a_pass, check4a_fail);
+        end
+        sb_pass = sb_pass + check4a_pass;
+        sb_fail = sb_fail + check4a_fail;
+
+        // --- Check 5: sentinel frame confirms a coef load is correctly used ---
         //
         // The sentinel frame (index STALL_TESTS-1) was processed using the
-        // coef set loaded via hh_load DURING the stall window.  Its output
-        // must match sentinel_gold, not z_r_gold[STALL_TESTS-1].
+        // SENTINEL coef set, loaded via hh_load one cycle ahead of its
+        // valid_in during Phase 3's last iteration (the normal hh_load
+        // timing constraint, exercised with sentinel values for an easy
+        // analytical golden). Its output must match sentinel_gold.
         $display("");
-        $display("  CHECK 4: sentinel frame (index %0d) confirms hh_load during stall",
+        $display("  CHECK 5: sentinel frame (index %0d) -- coef load one cycle ahead of valid_in",
                  STALL_TESTS - 1);
         $display("  (coef: all rows/cols = SENTINEL_COEF=%0d, y: all cols = SENTINEL_Y=%0d)",
                  $signed(SENTINEL_COEF), $signed(SENTINEL_Y));
@@ -767,18 +815,27 @@ end
 //    On the FIRST negedge of the stall, assert hh_load with the SENTINEL
 //    coef set.  This verifies that hh_load is not gated by en.
 //    On subsequent stall negedges, deassert hh_load.
+//    Immediately after the stall window, CHECK 4 reads coef_real/coef_imag
+//    directly via hierarchical reference and confirms they equal the
+//    widened SENTINEL_COEF -- this proves hh_load took effect during en=0,
+//    independent of anything downstream.
 //
 //  Phase 3 – Post-stall frames (indices STALL_FRAME_IDX+1 .. STALL_TESTS-2):
 //    Re-assert en.  Use hh_r_mem/y_r_mem just like Suite A.
 //    Same overlap scheme; each frame uses coefs from the previous cycle's
-//    hh_load.
+//    hh_load.  The coefficient bank only holds ONE set at a time, so the
+//    sentinel set loaded in Phase 2 is necessarily overwritten by this
+//    overlap scheme -- CHECK 4 above is what verifies the stall-time load,
+//    not persistence through Phase 3.
 //
 //  Phase 4 – Sentinel frame (index STALL_TESTS-1):
-//    Uses the sentinel coef set (already loaded during the stall).
-//    The overlap hh_load during Phase 3 reloads normal coefs for the frame
-//    AFTER the sentinel, but the sentinel itself runs on the sentinel coefs.
-//    Implementation: stop the overlap one frame early so no hh_load fires
-//    before the sentinel's valid_in.
+//    On the LAST iteration of the Phase 3 loop (sinj_test == STALL_TESTS-2,
+//    i.e. frame 6's cycle), instead of overlap-loading frame 7's coefs (frame
+//    7 doesn't exist in hh_r_mem), load the SENTINEL coef set via hh_load.
+//    This is registered one cycle ahead of the sentinel frame's valid_in --
+//    exactly the documented hh_load timing constraint -- so the sentinel
+//    frame uses SENTINEL_COEF with SENTINEL_Y, giving the easily-verified
+//    analytical golden result computed in sentinel_gold_calc.
 //
 // vin_cycle for stall frames is stored in vin_cycle[NUM_TESTS .. NUM_TESTS+STALL_TESTS-1]
 // to keep Suite A's vin_cycle array intact.
@@ -880,6 +937,8 @@ initial begin : stall_injector_proc
              STALL_CYCLES);
     $display("    Loading SENTINEL coef via hh_load during stall");
 
+    stall_window_active = 1'b1;
+
     for (stall_cy = 0; stall_cy < STALL_CYCLES; stall_cy = stall_cy + 1) begin
         @(negedge clk);
         en       = 1'b0;     // pipeline frozen
@@ -903,6 +962,34 @@ initial begin : stall_injector_proc
         @(posedge clk);
         // stall_collector_proc monitors valid_out during this window
     end
+
+    stall_window_active = 1'b0;
+
+    // ------------------------------------------------------------------
+    // CHECK 4: directly verify the coefficient registers via hierarchical
+    // reference. hh_load fired during stall_cy==0 (en=0); coef_real/imag
+    // should now hold the widened SENTINEL_COEF / 0 for every (row,col).
+    // hh_load has been 0 since, so these values are still stable here,
+    // one cycle before Phase 3's overlap scheme begins overwriting them.
+    // ------------------------------------------------------------------
+    $display(">>> [SuiteB] CHECK 4: verifying coef_real/coef_imag == SENTINEL_COEF_W via dut.coef_*");
+    for (sinj_row = 0; sinj_row < ROWS; sinj_row = sinj_row + 1) begin
+        for (sinj_col = 0; sinj_col < COLS; sinj_col = sinj_col + 1) begin
+            if (dut.coef_real[sinj_row][sinj_col] !== SENTINEL_COEF_W ||
+                dut.coef_imag[sinj_row][sinj_col] !== '0) begin
+                $display("    [SuiteB] CHECK4 MISMATCH at coef[%0d][%0d]: got=(%0d,%0d) exp=(%0d,%0d)  FAIL",
+                    sinj_row, sinj_col,
+                    dut.coef_real[sinj_row][sinj_col], dut.coef_imag[sinj_row][sinj_col],
+                    SENTINEL_COEF_W, 0);
+                check4a_fail = check4a_fail + 1;
+            end else begin
+                check4a_pass = check4a_pass + 1;
+            end
+        end
+    end
+    $display("    [SuiteB] CHECK4 coef register check: PASS=%0d FAIL=%0d",
+             check4a_pass, check4a_fail);
+
 
     // ------------------------------------------------------------------
     // Phase 3: post-stall frames STALL_FRAME_IDX+1 .. STALL_TESTS-2.
@@ -945,9 +1032,13 @@ initial begin : stall_injector_proc
         end
         valid_in = 1'b1;
 
-        // Overlap next coef — but NOT for the frame just before sentinel;
-        // the sentinel uses the coef set loaded during the stall (still
-        // in the coef registers from Phase 2), so we must NOT overwrite it.
+        // Overlap next coef. For sinj_test < STALL_TESTS-2, the next frame
+        // is a normal frame -- load its real coefficient set. For the last
+        // iteration (sinj_test == STALL_TESTS-2, frame 6's cycle), the
+        // "next frame" is the sentinel (index STALL_TESTS-1) -- load the
+        // SENTINEL coef set here so it is registered one cycle ahead of the
+        // sentinel frame's valid_in, per the documented hh_load timing
+        // constraint.
         if (sinj_test + 1 <= STALL_TESTS - 2) begin
             for (sinj_row = 0; sinj_row < ROWS; sinj_row = sinj_row + 1)
                 for (sinj_col = 0; sinj_col < COLS; sinj_col = sinj_col + 1) begin
@@ -958,10 +1049,14 @@ initial begin : stall_injector_proc
                 end
             hh_load = 1'b1;
         end else begin
-            // Last post-stall frame before sentinel: do NOT load new coefs.
-            // The sentinel frame will use whatever is in the coef registers —
-            // which is the sentinel coef set from Phase 2.
-            hh_load = 1'b0;
+            // Last post-stall frame before the sentinel: load SENTINEL_COEF
+            // for the sentinel frame's use.
+            for (sinj_row = 0; sinj_row < ROWS; sinj_row = sinj_row + 1)
+                for (sinj_col = 0; sinj_col < COLS; sinj_col = sinj_col + 1) begin
+                    hh_real[sinj_row][sinj_col] = SENTINEL_COEF;
+                    hh_imag[sinj_row][sinj_col] = '0;
+                end
+            hh_load = 1'b1;
         end
 
         @(posedge clk);
@@ -972,7 +1067,8 @@ initial begin : stall_injector_proc
 
     // ------------------------------------------------------------------
     // Phase 4: sentinel frame (index STALL_TESTS-1).
-    //   Uses the sentinel coef set already in the registers.
+    //   Uses the SENTINEL coef set loaded during Phase 3's last iteration
+    //   (one cycle ago, per the hh_load timing constraint).
     //   y is all-SENTINEL_Y (real only) to match the gold calculation.
     // ------------------------------------------------------------------
     $display(">>> [SuiteB] Phase 4: sentinel frame (index %0d)", STALL_TESTS-1);
@@ -983,7 +1079,7 @@ initial begin : stall_injector_proc
         y_imag[sinj_col] = '0;
     end
     valid_in = 1'b1;
-    hh_load  = 1'b0;   // do NOT overwrite sentinel coefs
+    hh_load  = 1'b0;   // sentinel coef already registered by Phase 3's last iteration
     @(posedge clk);
     vin_cycle[NUM_TESTS + STALL_TESTS - 1] = cycle_counter;
     $display("    [SuiteB] sentinel frame  vin=%0d",
@@ -1011,13 +1107,13 @@ end
 //   (b) After the stall, collect STALL_TESTS outputs from valid_out.
 //
 // Timing:
-//   The stall window begins STALL_CYCLES cycles after frame STALL_FRAME_IDX's
-//   posedge.  This collector watches for the stall injector to finish Phase 1
-//   by monitoring vin_cycle for the last pre-stall frame, then counts cycles.
-//   It tracks stall state via a shared flag driven by the stall injector.
+//   stall_window_active is driven 1'b1 by stall_injector_proc for exactly
+//   the STALL_CYCLES negedge-to-posedge intervals where en=0 (Phase 2),
+//   and 1'b0 otherwise. Waiting on this flag (rather than polling vin_cycle,
+//   which is X until first written and so `== 0` never becomes true) gives
+//   an unambiguous, correctly-timed start for the stall-window monitor.
 // ===========================================================================
 integer sc_idx, sc_row;
-integer sc_stall_start_cycle;  // cycle counter value when stall begins
 
 initial begin : stall_collector_proc
     wait(stall_vectors_ready);
@@ -1026,26 +1122,15 @@ initial begin : stall_collector_proc
     // to avoid mis-capturing Suite A's outputs.
     wait(collect_done);
 
-    // Wait until the stall injector's Phase 1 last pre-stall posedge has
-    // committed (i.e. vin_cycle for the last pre-stall frame is recorded).
-    // We poll until vin_cycle[NUM_TESTS + STALL_FRAME_IDX] is non-zero
-    // (it starts at 0; will be set by the injector at the posedge).
-    while (vin_cycle[NUM_TESTS + STALL_FRAME_IDX] == 0)
-        @(posedge clk);
-
-    // The stall window opens on the next negedge after the last pre-stall
-    // posedge.  We record the start cycle for diagnostics.
-    @(negedge clk);
-    sc_stall_start_cycle = cycle_counter;
-    $display(">>> [SuiteB] COLLECTOR: stall window starts ~cycle %0d",
-             sc_stall_start_cycle);
+    // Wait for the stall injector to enter Phase 2 (en=0 window).
+    wait(stall_window_active);
+    $display(">>> [SuiteB] COLLECTOR: stall window active, monitoring %0d cycles",
+             STALL_CYCLES);
 
     // -----------------------------------------------------------------------
     // Monitor stall window: STALL_CYCLES posedges with en=0.
     // valid_out must be 0 on every posedge in this window.
     // -----------------------------------------------------------------------
-    // The stall injector holds en=0 for STALL_CYCLES negedge-to-posedge pairs.
-    // We observe STALL_CYCLES posedges here.
     repeat (STALL_CYCLES) begin
         @(posedge clk);
         if (valid_out === 1'b1) begin
