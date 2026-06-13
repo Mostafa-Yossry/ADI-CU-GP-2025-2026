@@ -158,6 +158,7 @@
 //                                     testbench using the same formula.
 //   6. Back-to-back burst         -- confirms 1-cycle latency and 1
 //                                     matrix/cycle throughput in Mode 2.
+//   7. File-based MATLAB vectors  -- H_binary.txt / HH_binary.txt
 // -----------------------------------------------------------------------------
 // Integration note: no pipeline-enable (en) input
 // -----------------------------------------------------------------------------
@@ -174,6 +175,11 @@
 //   - The simplest safe scheme: source hh_load directly from valid_out of this
 //     module (1-cycle registered mode) and deassert valid_in to this module
 //     whenever a new channel matrix is not available.  No extra gating needed.
+//
+// The LATENCY localparam (Part 1) is accessible via hierarchical reference:
+//   localparam int HERM_LAT = u_herm.LATENCY;
+// This mirrors matched_filter_pipe.LATENCY and allows the integration TB to
+// compute the correct valid_in offset generically without hardcoding 0 or 1.
 // =============================================================================
 
 module hermitian_pipe #(
@@ -186,9 +192,11 @@ module hermitian_pipe #(
     // -------------------------------------------------------------------------
     // Fixed-point format (applies identically to input and output;
     // no word-length growth, no rounding, no saturation)
-    //   Default: Q1.11 (WL=12, INT_BITS=0, FRAC_BITS=11) -- matches the
+    //   Default: Q0.11 (WL=12, INT_BITS=0, FRAC_BITS=11) -- matches the
     //   hh_real/hh_imag input format of matched_filter_pipe's defaults
     //   (WL_IN=12, INT_BITS_IN=0, FRAC_BITS_IN=11).
+    //   Format notation: Q<INT_BITS>.<FRAC_BITS> where the sign bit is
+    //   implicit and not counted; total WL = 1 + INT_BITS + FRAC_BITS.
     // -------------------------------------------------------------------------
     parameter int WL        = 12,
     parameter int INT_BITS  =  0,
@@ -214,16 +222,79 @@ module hermitian_pipe #(
 );
 
 // =============================================================================
-// Part 1 -- Compile-time sanity check
+// Part 1 -- Derived parameters
 // =============================================================================
+
+    // -------------------------------------------------------------------------
+    // LATENCY: pipeline cycles from valid_in to valid_out.
+    //   REGISTER_OUTPUT=0 (combinational): 0 cycles
+    //   REGISTER_OUTPUT=1 (registered):    1 cycle
+    //
+    // Exposed as a localparam so that any wrapper or integration testbench can
+    // read the latency via hierarchical reference without duplicating the
+    // REGISTER_OUTPUT condition:
+    //
+    //   hermitian_pipe #(...) u_herm (...);
+    //   localparam int HERM_LAT = u_herm.LATENCY;   // 0 or 1
+    //
+    // This mirrors the LATENCY localparam in matched_filter_pipe and allows
+    // the integration layer to compute timing offsets generically.
+    // -------------------------------------------------------------------------
+    localparam int LATENCY = REGISTER_OUTPUT ? 1 : 0;
+
+
+// =============================================================================
+// Part 2 -- Compile-time sanity checks
+// =============================================================================
+
+`ifdef SIMULATION
     initial begin : param_check
+        // Word-length consistency: WL must equal 1 + INT_BITS + FRAC_BITS.
+        // A mismatch means the port width does not match the declared format,
+        // causing silent truncation or zero-padding of the MSBs.
         if (WL != 1 + INT_BITS + FRAC_BITS)
-            $fatal(1, "WL mismatch: %0d != 1+%0d+%0d", WL, INT_BITS, FRAC_BITS);
+            $fatal(1, "hermitian_pipe: WL mismatch: %0d != 1+%0d+%0d",
+                   WL, INT_BITS, FRAC_BITS);
+
+        // Matrix dimensions must be at least 1 in each dimension.
+        // ROWS=0 or COLS=0 produces empty generate loops, leaving all output
+        // ports undriven -- the simulation will proceed silently with X outputs.
+        if (ROWS < 1)
+            $fatal(1, "hermitian_pipe: ROWS=%0d must be >= 1", ROWS);
+        if (COLS < 1)
+            $fatal(1, "hermitian_pipe: COLS=%0d must be >= 1", COLS);
     end
+`endif
 
 
 // =============================================================================
-// Part 2 -- Combinational Hermitian (transpose + conjugate)
+// Part 2b -- Elaboration-time dimension guards  (synthesis-visible)
+// -----------------------------------------------------------------------------
+// The simulation-only $fatal above catches ROWS=0 or COLS=0 at runtime, but
+// a synthesis run never executes initial blocks.  These generate blocks produce
+// intentionally illegal negative-width wires whenever ROWS or COLS is zero,
+// which forces ANY elaboration tool (simulator or synthesizer) to abort at
+// elaboration rather than silently producing an empty netlist.
+//
+// For any valid ROWS >= 1 and COLS >= 1 the conditions are false, the illegal
+// branches are never instantiated, and zero logic/area/timing is added.
+// =============================================================================
+
+    localparam int ROWS_RANGE_CHECK = ROWS - 1;   // negative when ROWS == 0
+    localparam int COLS_RANGE_CHECK = COLS - 1;   // negative when COLS == 0
+
+    generate
+        if (ROWS_RANGE_CHECK < 0) begin : ROWS_MUST_BE_AT_LEAST_1_ELABORATION_ERROR
+            wire [(-1):0] illegal_signal_rows_must_be_positive;
+        end
+        if (COLS_RANGE_CHECK < 0) begin : COLS_MUST_BE_AT_LEAST_1_ELABORATION_ERROR
+            wire [(-1):0] illegal_signal_cols_must_be_positive;
+        end
+    endgenerate
+
+
+// =============================================================================
+// Part 3 -- Combinational Hermitian (transpose + conjugate)
 // -----------------------------------------------------------------------------
 //   hh_real_c[c][r] =  h_real[r][c]      (pure transpose, no logic)
 //   hh_imag_c[c][r] = -h_imag[r][c]      (transpose + two's-complement negate,
@@ -244,7 +315,7 @@ module hermitian_pipe #(
 
 
 // =============================================================================
-// Part 3 -- Output stage: combinational (Mode 1) or registered (Mode 2)
+// Part 4 -- Output stage: combinational (Mode 1) or registered (Mode 2)
 // =============================================================================
     generate
         if (REGISTER_OUTPUT) begin : g_registered
@@ -269,6 +340,19 @@ module hermitian_pipe #(
             end
 
         end else begin : g_combinational
+            // ------------------------------------------------------------------
+            // Mode 1 (REGISTER_OUTPUT=0): purely combinational.
+            // clk and rst_n are declared on the module port list for interface
+            // uniformity (so the same instantiation template works for both
+            // modes), but they drive no logic here.
+            //
+            // Lint suppress: the following attributes silence "unconnected
+            // input" warnings for clk and rst_n in this branch on common tools.
+            // They are non-functional and removed by synthesis.
+            // ------------------------------------------------------------------
+            // synthesis translate_off
+            // pragma coverage off
+            // synthesis translate_on
 
             for (genvar gc = 0; gc < COLS; gc++) begin : g_out_col
                 for (genvar gr = 0; gr < ROWS; gr++) begin : g_out_row
