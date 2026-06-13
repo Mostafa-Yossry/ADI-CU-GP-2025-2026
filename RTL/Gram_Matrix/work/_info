@@ -1,0 +1,233 @@
+m255
+K4
+z2
+Z0 !s99 nomlopt
+R0
+R0
+R0
+R0
+R0
+R0
+R0
+!s11f vlog 2021.1 2021.01, Jan 19 2021
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z1 dG:/Sarah/GP/Gram Matrix RTL
+T_opt
+!s110 1781378688
+VlYk[6=N_FQ:c1hc^Fjh6@0
+Z2 04 18 4 work tb_gram_matrix_top fast 0
+=1-98fa9bcb9c42-6a2dae7f-6a-32f8
+Z3 !s124 OEM100
+Z4 o-quiet -auto_acc_if_foreign -work work +acc
+Z5 tCvgOpt 0
+n@_opt
+Z6 OL;O;2021.1;73
+R1
+T_opt1
+!s110 1781392414
+VI0_o3E3o3EJ3XZgV2:cnA1
+R2
+=2-98fa9bcb9c42-6a2de41e-1bb-3ce8
+R3
+R4
+R5
+n@_opt1
+R6
+vgram_controller
+Z7 DXx6 sv_std 3 std 0 22 9oUSJO;AeEaW`l:M@^WG92
+!s110 1781391988
+!i10b 1
+!s100 ?G2:hz7JB`0d<nJ^d]S=L1
+Ij`LJMHWLQ`eQ@2a;a8ISj2
+S1
+Z8 dG:/Sarah/GP/Gram Matrix RTL/second trial
+w1781391851
+8G:/Sarah/GP/Gram Matrix RTL/second trial/gram_controller.sv
+FG:/Sarah/GP/Gram Matrix RTL/second trial/gram_controller.sv
+!i122 2
+L0 24 167
+Z9 VDg1SIo80bB@j0V0VzS_@n1
+Z10 OL;L;2021.1;73
+r1
+!s85 0
+31
+Z11 !s108 1781391988.000000
+!s107 G:/Sarah/GP/Gram Matrix RTL/second trial/gram_controller.sv|
+!s90 -reportprogress|300|-work|work|-vopt|-sv|-stats=none|G:/Sarah/GP/Gram Matrix RTL/second trial/gram_controller.sv|
+!i113 0
+Z12 o-work work -sv -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+R5
+vgram_matrix_top
+R7
+Z13 !s110 1781391989
+!i10b 1
+!s100 WE0<`HoQDBmV=TlXbIh9:1
+IbilKH9U0e=CcdSL7`>gZV1
+S1
+R8
+w1781386423
+8G:/Sarah/GP/Gram Matrix RTL/second trial/gram_matrix_top.sv
+FG:/Sarah/GP/Gram Matrix RTL/second trial/gram_matrix_top.sv
+!i122 3
+L0 29 200
+R9
+R10
+r1
+!s85 0
+31
+R11
+!s107 G:/Sarah/GP/Gram Matrix RTL/second trial/gram_matrix_top.sv|
+!s90 -reportprogress|300|-work|work|-vopt|-sv|-stats=none|G:/Sarah/GP/Gram Matrix RTL/second trial/gram_matrix_top.sv|
+!i113 0
+R12
+R5
+vgram_mem
+R7
+R13
+!i10b 1
+!s100 L4H=P@eQO_Pcn<[H9Z9Qb1
+INEcSi2_=]?TXRW3UQ_lIc1
+S1
+R8
+w1781377302
+8G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv
+FG:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv
+!i122 4
+L0 13 37
+R9
+R10
+r1
+!s85 0
+31
+Z14 !s108 1781391989.000000
+!s107 G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv|
+!s90 -reportprogress|300|-work|work|-vopt|-sv|-stats=none|G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv|
+!i113 0
+R12
+R5
+vgram_read_ports
+R7
+R13
+!i10b 1
+!s100 W4gl1g0DbS:2[N9A10Q]d3
+I3>2m?ACLhRe_joFL^z_4G0
+S1
+R8
+w1781377313
+8G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv
+FG:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv
+!i122 5
+L0 22 55
+R9
+R10
+r1
+!s85 0
+31
+R14
+!s107 G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv|
+!s90 -reportprogress|300|-work|work|-vopt|-sv|-stats=none|G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv|
+!i113 0
+R12
+R5
+vhermitian_pipeW
+R7
+R13
+!i10b 1
+!s100 i?F5CA>00GTG8_Ihe8lMO3
+IKcX@c9lfb7^O^zj;NK`Q42
+S1
+R8
+w1781377298
+8G:/Sarah/GP/Gram Matrix RTL/second trial/hermitian_pipe.sv
+FG:/Sarah/GP/Gram Matrix RTL/second trial/hermitian_pipe.sv
+!i122 6
+L0 185 185
+R9
+R10
+r1
+!s85 0
+31
+R14
+!s107 G:/Sarah/GP/Gram Matrix RTL/second trial/hermitian_pipe.sv|
+!s90 -reportprogress|300|-work|work|-vopt|-sv|-stats=none|G:/Sarah/GP/Gram Matrix RTL/second trial/hermitian_pipe.sv|
+!i113 0
+R12
+R5
+nhermitian_pipe@w
+vmac
+R7
+R13
+!i10b 1
+!s100 ]I;O7]DCG<5h_haJcFiiG0
+I3alg]Aizz:H`jThJ_QmbA3
+S1
+R8
+w1781390427
+8G:/Sarah/GP/Gram Matrix RTL/second trial/mac.sv
+FG:/Sarah/GP/Gram Matrix RTL/second trial/mac.sv
+!i122 7
+L0 29 150
+R9
+R10
+r1
+!s85 0
+31
+R14
+!s107 G:/Sarah/GP/Gram Matrix RTL/second trial/mac.sv|
+!s90 -reportprogress|300|-work|work|-vopt|-sv|-stats=none|G:/Sarah/GP/Gram Matrix RTL/second trial/mac.sv|
+!i113 0
+R12
+R5
+vmac_array
+R7
+R13
+!i10b 1
+!s100 FCF8fNS`<oQ9lVQK;Z`f?2
+I;3?Hh9jfkW`A4@Y>NC6ER1
+S1
+R8
+w1781377309
+8G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv
+FG:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv
+!i122 8
+L0 23 74
+R9
+R10
+r1
+!s85 0
+31
+R14
+!s107 G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv|
+!s90 -reportprogress|300|-work|work|-vopt|-sv|-stats=none|G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv|
+!i113 0
+R12
+R5
+vtb_gram_matrix_top
+R7
+!s110 1781392411
+!i10b 1
+!s100 N1mzG3[oc29Ja`iRRObDJ0
+I0S^7SkLK^2`0GY;?A0[Rl2
+S1
+R8
+w1781392406
+8G:/Sarah/GP/Gram Matrix RTL/second trial/tb_gram_matrix_top.sv
+FG:/Sarah/GP/Gram Matrix RTL/second trial/tb_gram_matrix_top.sv
+!i122 10
+L0 24 159
+R9
+R10
+r1
+!s85 0
+31
+!s108 1781392411.000000
+!s107 G:/Sarah/GP/Gram Matrix RTL/second trial/tb_gram_matrix_top.sv|
+!s90 -reportprogress|300|-work|work|-vopt|-sv|-stats=none|G:/Sarah/GP/Gram Matrix RTL/second trial/tb_gram_matrix_top.sv|
+!i113 0
+R12
+R5
