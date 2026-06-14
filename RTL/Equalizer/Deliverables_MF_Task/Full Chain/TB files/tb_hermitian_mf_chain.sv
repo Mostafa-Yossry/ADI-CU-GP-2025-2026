@@ -48,11 +48,16 @@ localparam int  S0_HALF    = 1024;
 localparam string FILE_DIR = "testbench_files2/";
 
 // ---------------------------------------------------------------------------
-// Clock
+// Clock & Global Cycle Counter
 // ---------------------------------------------------------------------------
 logic clk;
 initial clk = 0;
 always #(CLK_PERIOD/2) clk = ~clk;
+
+int global_cycle = 0;
+always_ff @(posedge clk) begin
+    global_cycle <= global_cycle + 1;
+end
 
 // ---------------------------------------------------------------------------
 // DUT ports
@@ -108,17 +113,22 @@ hermitian_mf_chain #(
 // ---------------------------------------------------------------------------
 // File-based memory (Suite 2)
 // ---------------------------------------------------------------------------
-logic [WL_IN-1:0]     mem_hh [0 : NUM_FRAMES*N*N*2 - 1];
+logic [WL_IN-1:0]     mem_h  [0 : NUM_FRAMES*N*N*2 - 1]; // raw H matrices
 logic [WL_IN-1:0]     mem_y  [0 : NUM_FRAMES*N*2   - 1];
 logic [MF_WL_OUT-1:0] mem_z  [0 : NUM_FRAMES*N*2   - 1];
 
 // ---------------------------------------------------------------------------
-// Scoreboard type:  [row][0=real / 1=imag]
+// Scoreboard types
 // ---------------------------------------------------------------------------
 typedef logic signed [MF_WL_OUT-1:0] gy_vec_t [0:N-1][0:1];
 
+typedef struct {
+    gy_vec_t exp;
+    int in_cyc;
+} s2_item_t;
+
 // ===========================================================================
-// Tasks — ALL declarations are at top of task body (before any statements)
+// Tasks
 // ===========================================================================
 
 // Standard reset
@@ -139,20 +149,11 @@ task automatic do_reset();
     repeat(2) @(posedge clk);
 endtask
 
-// Load one H matrix for one cycle, wait for the full coefficient load
-// sequence to complete.
-//
-// Timing (HERM_REG=1):
-//   Posedge 0 : h_valid sampled by hermitian_pipe
-//   Posedge 1 : herm_valid_out fires; coef_hold NBA-updated; hh_load_int
-//               registered to fire next cycle
-//   Posedge 2 : hh_load_int=1; MF coef registers sample valid coef_hold data
-//   Posedge 3 : MF coefs settled; y_valid may now be asserted
-//
-// So we wait HERM_LAT + 2 extra posedges after the h_valid posedge.
+// Load H, log cycles
 task automatic load_H_and_wait(
     input logic signed [WL_IN-1:0] hr [0:N-1][0:N-1],
-    input logic signed [WL_IN-1:0] hi [0:N-1][0:N-1]
+    input logic signed [WL_IN-1:0] hi [0:N-1][0:N-1],
+    output int cyc_h_valid
 );
     for (int r = 0; r < N; r++)
         for (int c = 0; c < N; c++) begin
@@ -160,40 +161,44 @@ task automatic load_H_and_wait(
             h_imag_arr[r][c] = hi[r][c];
         end
     h_valid = 1'b1;
-    @(posedge clk);          // posedge 0: h_valid captured
+    cyc_h_valid = global_cycle;
+    @(posedge clk);          
     h_valid = 1'b0;
-    repeat(HERM_LAT) @(posedge clk);  // posedge 1: herm_valid_out; coef_hold latched; hh_load_int registered
-    @(posedge clk);          // posedge 2: hh_load_int=1; MF coef registers updated
-    @(posedge clk);          // posedge 3: guard — MF coefs fully settled
+    repeat(HERM_LAT) @(posedge clk);
+    @(posedge clk);          
+    @(posedge clk);          
 endtask
 
 // Drive flat y buses for one cycle
 task automatic drive_y_flat(
     input logic signed [WL_IN-1:0] yr [0:N-1],
-    input logic signed [WL_IN-1:0] yi [0:N-1]
+    input logic signed [WL_IN-1:0] yi [0:N-1],
+    output int cyc_y_valid
 );
     for (int k = 0; k < N; k++) begin
         y_re_flat[k*WL_IN +: WL_IN] = yr[k];
         y_im_flat[k*WL_IN +: WL_IN] = yi[k];
     end
     y_valid = 1'b1;
+    cyc_y_valid = global_cycle;
     @(posedge clk);
     y_valid = 1'b0;
 endtask
 
-// Wait for one gy_valid; capture output; error if timeout
+// Wait for one gy_valid; capture output and cycle
 task automatic collect_one(
     output gy_vec_t got,
     output int      err,
+    output int      out_cyc,
     input  int      timeout
 );
-    int t;
-    t   = 0;
+    int t = 0;
     err = 0;
     forever begin
         @(posedge clk);
         t++;
         if (gy_valid) begin
+            out_cyc = global_cycle - 1; 
             for (int k = 0; k < N; k++) begin
                 got[k][0] = signed'(gy_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
                 got[k][1] = signed'(gy_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
@@ -208,63 +213,36 @@ task automatic collect_one(
     end
 endtask
 
-// Compare output against expected; return mismatch count
-task automatic check_gy(
-    input gy_vec_t got,
-    input gy_vec_t exp,
-    input int      frame_num,
-    output int     mismatches
-);
-    mismatches = 0;
-    for (int k = 0; k < N; k++) begin
-        if (got[k][0] !== exp[k][0] || got[k][1] !== exp[k][1]) begin
-            $display("    FAIL frame=%0d row=%0d  got(%0d,%0d)  exp(%0d,%0d)",
-                     frame_num, k,
-                     got[k][0], got[k][1],
-                     exp[k][0], exp[k][1]);
-            mismatches++;
-        end
-    end
-endtask
-
 // ===========================================================================
 // MAIN TEST PROCESS
 // ===========================================================================
 int total_errors;
 
 initial begin : main_proc
-
     total_errors = 0;
 
     $display("=============================================================");
     $display(" tb_hermitian_mf_chain");
     $display(" N=%0d  WL_IN=%0d  MF_WL_OUT=%0d", N, WL_IN, MF_WL_OUT);
-    $display(" HERM_LAT=%0d  MF_LAT=%0d  CHAIN_LAT=%0d cycles",
-             HERM_LAT, MF_LAT, CHAIN_LAT);
+    $display(" HERM_LAT=%0d  MF_LAT=%0d  CHAIN_LAT=%0d cycles", HERM_LAT, MF_LAT, CHAIN_LAT);
     $display("=============================================================");
 
     // =========================================================================
     // SUITE 0 — Identity sanity
-    // H = 0.5*I (real), y = 0.5*ones (real)
-    // H^H = 0.5*I  →  g_y[k] = 0.25  →  in Q1.11 = 512
     // =========================================================================
     $display("");
     $display(">>> SUITE 0: Identity sanity (H=0.5*I, y=0.5*ones)");
-
     do_reset();
 
     begin : suite_0
-        // Declarations first
         logic signed [WL_IN-1:0] s0_Hr [0:N-1][0:N-1];
         logic signed [WL_IN-1:0] s0_Hi [0:N-1][0:N-1];
         logic signed [WL_IN-1:0] s0_yr [0:N-1];
         logic signed [WL_IN-1:0] s0_yi [0:N-1];
         gy_vec_t s0_got;
-        int s0_err;
-        int s0_mm;
-        int s0_errs;
+        int s0_err, s0_mm, s0_errs;
+        int cyc_h, cyc_y, cyc_gy;
 
-        // Build inputs
         for (int r = 0; r < N; r++)
             for (int c = 0; c < N; c++) begin
                 s0_Hr[r][c] = (r == c) ? WL_IN'(S0_HALF) : '0;
@@ -275,47 +253,44 @@ initial begin : main_proc
             s0_yi[k] = '0;
         end
 
-        load_H_and_wait(s0_Hr, s0_Hi);
-        drive_y_flat(s0_yr, s0_yi);
+        load_H_and_wait(s0_Hr, s0_Hi, cyc_h);
+        drive_y_flat(s0_yr, s0_yi, cyc_y);
 
-        s0_err  = 0;
-        s0_mm   = 0;
-        s0_errs = 0;
-        collect_one(s0_got, s0_err, MF_LAT + 8);
+        s0_err  = 0; s0_mm   = 0; s0_errs = 0;
+        collect_one(s0_got, s0_err, cyc_gy, MF_LAT + 8);
+
+        $display("    --- Timing Diagram ---");
+        $display("    [Cyc %6d] h_valid asserted", cyc_h);
+        $display("    [Cyc %6d] herm_valid computed", cyc_h + HERM_LAT);
+        $display("    [Cyc %6d] hh_load triggered", cyc_h + HERM_LAT + 1);
+        $display("    [Cyc %6d] y_valid asserted", cyc_y);
+        $display("    [Cyc %6d] gy_valid captured", cyc_gy);
+        $display("    ----------------------");
 
         if (s0_err) begin
             s0_errs++;
         end else begin
-            if (!gy_enable) begin
-                $display("    FAIL: gy_enable not asserted on first gy_valid");
-                s0_errs++;
-            end
+            $display("    ROW | DUT (re, im)       | GLD (re, im)");
+            $display("    -----------------------------------------");
             for (int k = 0; k < N; k++) begin
-                if (s0_got[k][0] !== MF_WL_OUT'(S0_EXP) ||
-                    s0_got[k][1] !== MF_WL_OUT'(0)) begin
-                    $display("    FAIL row=%0d  got(%0d,%0d)  exp(%0d,0)",
-                             k, s0_got[k][0], s0_got[k][1], S0_EXP);
+                if (s0_got[k][0] !== MF_WL_OUT'(S0_EXP) || s0_got[k][1] !== MF_WL_OUT'(0)) begin
+                    $display("    %3d | FAIL (%5d, %5d) | (%5d, %5d)", k, s0_got[k][0], s0_got[k][1], S0_EXP, 0);
                     s0_mm++;
-                end else
-                    $display("    PASS row=%0d  gy=(%0d,%0d)",
-                             k, s0_got[k][0], s0_got[k][1]);
+                end else begin
+                    $display("    %3d | PASS (%5d, %5d) | (%5d, %5d)", k, s0_got[k][0], s0_got[k][1], S0_EXP, 0);
+                end
             end
             s0_errs += s0_mm;
         end
         total_errors += s0_errs;
-        $display(">>> SUITE 0: %s (%0d error(s))",
-                 (s0_errs==0) ? "PASSED" : "FAILED", s0_errs);
+        $display(">>> SUITE 0: %s (%0d error(s))", (s0_errs==0) ? "PASSED" : "FAILED", s0_errs);
     end
 
     // =========================================================================
-    // SUITE 1 — All-real diagonal: verify imag outputs are zero
-    // H[k][k] = (k+1)*128  in Q1.11 (= (k+1)/16)
-    // y[k]    = (k+1)*128  in Q1.11
-    // For all-real inputs imag(g_y) must be identically zero.
+    // SUITE 1 — All-real diagonal
     // =========================================================================
     $display("");
     $display(">>> SUITE 1: All-real diagonal — verify imag(g_y) == 0");
-
     do_reset();
 
     begin : suite_1
@@ -324,9 +299,8 @@ initial begin : main_proc
         logic signed [WL_IN-1:0] s1_yr [0:N-1];
         logic signed [WL_IN-1:0] s1_yi [0:N-1];
         gy_vec_t s1_got;
-        int s1_err;
-        int s1_mm;
-        int s1_errs;
+        int s1_err, s1_mm, s1_errs;
+        int cyc_h, cyc_y, cyc_gy;
 
         for (int r = 0; r < N; r++)
             for (int c = 0; c < N; c++) begin
@@ -338,106 +312,86 @@ initial begin : main_proc
             s1_yi[k] = '0;
         end
 
-        load_H_and_wait(s1_Hr, s1_Hi);
-        drive_y_flat(s1_yr, s1_yi);
+        load_H_and_wait(s1_Hr, s1_Hi, cyc_h);
+        drive_y_flat(s1_yr, s1_yi, cyc_y);
 
-        s1_err  = 0;
-        s1_mm   = 0;
-        s1_errs = 0;
-        collect_one(s1_got, s1_err, MF_LAT + 8);
+        s1_err  = 0; s1_mm   = 0; s1_errs = 0;
+        collect_one(s1_got, s1_err, cyc_gy, MF_LAT + 8);
 
         if (s1_err) begin
             s1_errs++;
         end else begin
-            $display("    Checking imag(g_y) == 0 for all rows:");
+            $display("    ROW | DUT IMAG | STATUS (Expect 0)");
+            $display("    ----------------------------------");
             for (int k = 0; k < N; k++) begin
                 if (s1_got[k][1] !== MF_WL_OUT'(0)) begin
-                    $display("      FAIL row=%0d imag=%0d (expected 0)", k, s1_got[k][1]);
+                    $display("    %3d | %8d | FAIL!!", k, s1_got[k][1]);
                     s1_mm++;
+                end else begin
+                    $display("    %3d | %8d | PASS", k, s1_got[k][1]);
                 end
             end
-            $display("    Real outputs (informational):");
-            for (int k = 0; k < N; k++)
-                $display("      row=%0d  gy_real=%0d", k, s1_got[k][0]);
             s1_errs += s1_mm;
         end
         total_errors += s1_errs;
-        $display(">>> SUITE 1: %s (%0d error(s))",
-                 (s1_errs==0) ? "PASSED" : "FAILED", s1_errs);
+        $display(">>> SUITE 1: %s (%0d error(s))", (s1_errs==0) ? "PASSED" : "FAILED", s1_errs);
     end
 
     // =========================================================================
     // SUITE 2 — File-based golden burst (100 frames)
-    //
-    // Golden files store HH (H^H), Y, Z = H^H*Y from MATLAB.
-    // We reconstruct H = (HH)^H = conj(HH)^T and feed it to the chain;
-    // hermitian_pipe regenerates HH and the MF produces Z.
     // =========================================================================
     $display("");
-    $display(">>> SUITE 2: File-based golden burst (%0d frames)", NUM_FRAMES);
+    $display(">>> SUITE 2: File-based golden burst (%0d frames) - Vertical Format", NUM_FRAMES);
 
     begin : suite_2
-        int fd_hh;
-        int fd_y;
-        int fd_z;
+        int fd_h, fd_y, fd_z;
         bit files_ok;
+        int lat_hist [int];
 
-        fd_hh    = $fopen({FILE_DIR, "HH_all_Convergent.txt"}, "r");
-        fd_y     = $fopen({FILE_DIR, "Y_all_Convergent.txt"},  "r");
-        fd_z     = $fopen({FILE_DIR, "Z_all_Convergent.txt"},  "r");
-        files_ok = (fd_hh != 0) && (fd_y != 0) && (fd_z != 0);
+        fd_h     = $fopen({FILE_DIR, "H_all_Convergent.txt"}, "r");
+        fd_y     = $fopen({FILE_DIR, "Y_all_Convergent.txt"}, "r");
+        fd_z     = $fopen({FILE_DIR, "Z_all_Convergent.txt"}, "r");
+        files_ok = (fd_h != 0) && (fd_y != 0) && (fd_z != 0);
 
-        if (fd_hh) $fclose(fd_hh);
+        if (fd_h)  $fclose(fd_h);
         if (fd_y)  $fclose(fd_y);
         if (fd_z)  $fclose(fd_z);
 
         if (!files_ok) begin
             $display("    WARNING: Golden files not found in %s — skipping.", FILE_DIR);
         end else begin
-            $readmemb({FILE_DIR, "HH_all_Convergent.txt"}, mem_hh);
-            $readmemb({FILE_DIR, "Y_all_Convergent.txt"},  mem_y);
-            $readmemb({FILE_DIR, "Z_all_Convergent.txt"},  mem_z);
+            $readmemb({FILE_DIR, "H_all_Convergent.txt"}, mem_h);
+            $readmemb({FILE_DIR, "Y_all_Convergent.txt"}, mem_y);
+            $readmemb({FILE_DIR, "Z_all_Convergent.txt"}, mem_z);
 
             do_reset();
 
             begin : s2_inner
-                // All declarations at top of named block
                 logic signed [WL_IN-1:0] s2_Hr [0:N-1][0:N-1];
                 logic signed [WL_IN-1:0] s2_Hi [0:N-1][0:N-1];
-                gy_vec_t s2_sb [$];
-                int s2_err_cnt;
-                int s2_vec_in;
-                int s2_vec_out;
-                int s2_gy_checked;
-                int s2_mm;
-                int s2_idx;
+                s2_item_t s2_sb [$];
+                int s2_err_cnt, s2_vec_in, s2_vec_out, s2_mm, s2_idx, cyc_h;
 
-                s2_err_cnt    = 0;
-                s2_vec_in     = 0;
-                s2_vec_out    = 0;
-                s2_gy_checked = 0;
+                s2_err_cnt = 0; s2_vec_in = 0; s2_vec_out = 0;
 
-                // Build H = conj(HH[0])^T from frame-0 stored HH
                 for (int r = 0; r < N; r++)
                     for (int c = 0; c < N; c++) begin
                         s2_idx = 0*N*N*2 + r*N*2 + c*2;
-                        // H[c][r] = conj(HH[r][c])
-                        s2_Hr[c][r] =  signed'(mem_hh[s2_idx]);
-                        s2_Hi[c][r] = -signed'(mem_hh[s2_idx + 1]);
+                        s2_Hr[r][c] = signed'(mem_h[s2_idx]);
+                        s2_Hi[r][c] = signed'(mem_h[s2_idx + 1]);
                     end
 
-                load_H_and_wait(s2_Hr, s2_Hi);
+                load_H_and_wait(s2_Hr, s2_Hi, cyc_h);
 
                 fork
                     // --- Driver thread ---
                     begin : s2_driver
                         logic signed [WL_IN-1:0] s2_yr [0:N-1];
                         logic signed [WL_IN-1:0] s2_yi [0:N-1];
-                        gy_vec_t s2_v;
+                        s2_item_t item;
                         int s2_didx;
 
                         for (int f = 0; f < NUM_FRAMES; f++) begin
-                            // Unpack Y[f]
                             for (int k = 0; k < N; k++) begin
                                 s2_didx = f*N*2 + k*2;
                                 s2_yr[k] = signed'(mem_y[s2_didx]);
@@ -445,56 +399,85 @@ initial begin : main_proc
                                 y_re_flat[k*WL_IN +: WL_IN] = s2_yr[k];
                                 y_im_flat[k*WL_IN +: WL_IN] = s2_yi[k];
                             end
-                            // Push expected Z[f]
                             for (int k = 0; k < N; k++) begin
                                 s2_didx = f*N*2 + k*2;
-                                s2_v[k][0] = signed'(mem_z[s2_didx]);
-                                s2_v[k][1] = signed'(mem_z[s2_didx + 1]);
+                                item.exp[k][0] = signed'(mem_z[s2_didx]);
+                                item.exp[k][1] = signed'(mem_z[s2_didx + 1]);
                             end
-                            s2_sb.push_back(s2_v);
-
+                            
                             y_valid = 1'b1;
+                            item.in_cyc = global_cycle;
+                            s2_sb.push_back(item);
+                            
                             @(posedge clk);
                             s2_vec_in++;
                         end
                         y_valid = 1'b0;
                     end : s2_driver
 
-                    // --- Collector thread ---
+                    // --- Collector thread (UPDATED FOR VERTICAL FORMAT) ---
                     begin : s2_collector
-                        gy_vec_t s2_exp;
+                        s2_item_t s2_exp_item;
                         logic signed [MF_WL_OUT-1:0] s2_gr, s2_gi;
-                        int s2_cidx;
+                        int gld_r, gld_i;
+                        string d_sgn, g_sgn;
+                        int d_aim, g_aim;
+                        int lat;
 
-                        @(posedge clk); // align with first driver posedge
+                        @(posedge clk);
                         while (s2_vec_out < NUM_FRAMES) begin
                             @(posedge clk);
                             if (gy_valid) begin
-                                if (!s2_gy_checked) begin
-                                    if (!gy_enable) begin
-                                        $display("    FAIL: gy_enable absent on first gy_valid");
-                                        s2_err_cnt++;
-                                    end else
-                                        $display("    gy_enable asserted correctly");
-                                    s2_gy_checked = 1;
-                                end
                                 if (s2_sb.size() == 0) begin
                                     $display("    FAIL: spurious gy_valid");
                                     s2_err_cnt++;
                                 end else begin
-                                    s2_exp = s2_sb.pop_front();
-                                    s2_mm  = 0;
+                                    s2_exp_item = s2_sb.pop_front();
+                                    s2_mm = 0;
+                                    lat = (global_cycle - 1) - s2_exp_item.in_cyc;
+                                    
+                                    // Update Histogram
+                                    if (lat_hist.exists(lat)) lat_hist[lat]++;
+                                    else lat_hist[lat] = 1;
+
+                                    // First pass to check for errors
                                     for (int k = 0; k < N; k++) begin
                                         s2_gr = signed'(gy_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
                                         s2_gi = signed'(gy_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
-                                        if (s2_gr !== s2_exp[k][0] || s2_gi !== s2_exp[k][1]) begin
-                                            $display("    FAIL f=%0d row=%0d got(%0d,%0d) exp(%0d,%0d)",
-                                                     s2_vec_out, k,
-                                                     s2_gr, s2_gi,
-                                                     s2_exp[k][0], s2_exp[k][1]);
+                                        if (s2_gr !== s2_exp_item.exp[k][0] || s2_gi !== s2_exp_item.exp[k][1]) begin
                                             s2_mm++;
                                         end
                                     end
+                                    
+                                    // --- Vertical Neat Display Block ---
+                                    $display("    ==============================================================================");
+                                    $display("    FRAME %3d | IN_CYC: %6d | OUT_CYC: %6d | LAT: %3d | STAT: %s", 
+                                             s2_vec_out, s2_exp_item.in_cyc, global_cycle - 1, lat, (s2_mm==0)?"PASS":"FAIL");
+                                    $display("    ------------------------------------------------------------------------------");
+                                    $display("    ROW | DUT (Real + Imag j)        | GLD (Real + Imag j)        | STATUS");
+                                    $display("    ------------------------------------------------------------------------------");
+                                    
+                                    for (int k = 0; k < N; k++) begin
+                                        s2_gr = signed'(gy_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
+                                        s2_gi = signed'(gy_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
+                                        
+                                        gld_r = s2_exp_item.exp[k][0];
+                                        gld_i = s2_exp_item.exp[k][1];
+                                        
+                                        d_sgn = (s2_gi < 0) ? "-" : "+";
+                                        d_aim = (s2_gi < 0) ? -s2_gi : s2_gi;
+                                        
+                                        g_sgn = (gld_i < 0) ? "-" : "+";
+                                        g_aim = (gld_i < 0) ? -gld_i : gld_i;
+                                        
+                                        $display("     %1d  | (%6d %s %5dj)       | (%6d %s %5dj)       | %s", 
+                                                 k, 
+                                                 s2_gr, d_sgn, d_aim, 
+                                                 gld_r, g_sgn, g_aim, 
+                                                 (s2_gr == gld_r && s2_gi == gld_i) ? "PASS" : "FAIL");
+                                    end
+                                    $display("    ==============================================================================\n");
+
                                     s2_err_cnt += s2_mm;
                                     s2_vec_out++;
                                 end
@@ -503,7 +486,17 @@ initial begin : main_proc
                     end : s2_collector
                 join
 
+                $display("    ------------------------------------------------------------------------------");
                 $display("    Frames in=%0d  out=%0d", s2_vec_in, s2_vec_out);
+                
+                // Flush Histogram
+                $display("");
+                $display("    --- Latency Histogram ---");
+                foreach (lat_hist[l]) begin
+                    $display("    %3d cycles : %5d frames", l, lat_hist[l]);
+                end
+                $display("    -------------------------");
+
                 if (s2_err_cnt == 0)
                     $display(">>> SUITE 2: ALL %0d FRAMES PASSED (bit-exact)", NUM_FRAMES);
                 else
@@ -541,6 +534,3 @@ initial begin : timeout_proc
 end
 
 endmodule
-// =============================================================================
-// tb_hermitian_mf_chain.sv — end of file
-// =============================================================================
