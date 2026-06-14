@@ -1,0 +1,266 @@
+%% =========================================================
+%  generate_binary_testbench_files_10seeds.m
+%
+%  Generates binary text files for RTL testbench verification
+%  of the systolic 8x8 Gram matrix:
+%
+%      G = H^H * H + sigma2/P * I
+%
+%  Generates data for SEEDS = 1:10
+%
+%  Output:
+%
+%    floor/
+%       H_binary.txt
+%       HH_binary.txt
+%       G_binary.txt
+%       sigma2_P_binary.txt
+%
+%    convergent/
+%       H_binary.txt
+%       HH_binary.txt
+%       G_binary.txt
+%       sigma2_P_binary.txt
+%
+%  Data from all seeds is appended sequentially.
+%
+%  For each seed:
+%
+%     H_binary.txt
+%         64 complex values
+%         128 lines
+%
+%     HH_binary.txt
+%         64 complex values
+%         128 lines
+%
+%     G_binary.txt
+%         64 complex values
+%         128 lines
+%
+%     sigma2_P_binary.txt
+%         1 line
+%
+%  Therefore for 10 seeds:
+%
+%     H_binary.txt   -> 1280 lines
+%     HH_binary.txt  -> 1280 lines
+%     G_binary.txt   -> 1280 lines
+%     sigma2_P_binary.txt -> 10 lines
+%% =========================================================
+
+clear;
+clc;
+
+%% ---------------- Parameters ----------------
+
+Nt = 8;
+Nr = 8;
+
+SNR_dB = -18;
+P      = 1;
+
+sigma2 = P/(10^(SNR_dB/10));
+sigma2_over_P = sigma2/P;
+
+a = -0.9995117188;     % Q1.11 minimum
+b =  0.9995117188;     % Q1.11 maximum
+
+WL_H = 12;
+FL_H = 11;
+
+WL_G = 12;
+FL_G = 4;
+
+WL_S = 12;
+FL_S = 4;
+
+NUM_SEEDS = 10;
+
+%% ---------------- Create folders ----------------
+
+if ~exist('floor','dir')
+    mkdir('floor');
+end
+
+if ~exist('convergent','dir')
+    mkdir('convergent');
+end
+
+%% ---------------- Open output files ----------------
+
+% Floor
+fid_H_floor = fopen(fullfile('floor','H_binary.txt'),'w');
+fid_HH_floor = fopen(fullfile('floor','HH_binary.txt'),'w');
+fid_G_floor = fopen(fullfile('floor','G_binary.txt'),'w');
+fid_S_floor = fopen(fullfile('floor','sigma2_P_binary.txt'),'w');
+
+% Convergent
+fid_H_conv = fopen(fullfile('convergent','H_binary.txt'),'w');
+fid_HH_conv = fopen(fullfile('convergent','HH_binary.txt'),'w');
+fid_G_conv = fopen(fullfile('convergent','G_binary.txt'),'w');
+fid_S_conv = fopen(fullfile('convergent','sigma2_P_binary.txt'),'w');
+
+%% =========================================================
+%  Loop over seeds
+%% =========================================================
+
+for seed = 1:NUM_SEEDS
+
+    fprintf('Generating Seed %d...\n', seed);
+
+    rng(seed);
+
+    %% Generate H
+
+    H_real = (b-a)*rand(Nr,Nt) + a;
+    H_imag = (b-a)*rand(Nr,Nt) + a;
+
+    H_float = H_real + 1j*H_imag;
+
+    HH_float = H_float';
+
+    %% =====================================================
+    % Floor rounding
+    %% =====================================================
+
+    F_floor = fimath( ...
+        'RoundingMethod','Floor', ...
+        'OverflowAction','Saturate');
+
+    H_fi = fi(H_float, ...
+        1,WL_H,FL_H, ...
+        'fimath',F_floor);
+
+    HH_fi = fi(HH_float, ...
+        1,WL_H,FL_H, ...
+        'fimath',F_floor);
+
+    sigma2_fi = fi(sigma2_over_P, ...
+        1,WL_S,FL_S, ...
+        'fimath',F_floor);
+
+    G_double = double(HH_fi)*double(H_fi) + ...
+               double(sigma2_fi)*eye(Nt);
+
+    G_fi = fi(G_double, ...
+        1,WL_G,FL_G, ...
+        'fimath',F_floor);
+
+    write_matrix_binary_fid(H_fi,WL_H,fid_H_floor);
+    write_matrix_binary_fid(HH_fi,WL_H,fid_HH_floor);
+    write_matrix_binary_fid(G_fi,WL_G,fid_G_floor);
+    write_scalar_binary_fid(sigma2_fi,WL_S,fid_S_floor);
+
+    %% =====================================================
+    % Convergent rounding
+    %% =====================================================
+
+    F_conv = fimath( ...
+        'RoundingMethod','Convergent', ...
+        'OverflowAction','Saturate');
+
+    H_fi = fi(H_float, ...
+        1,WL_H,FL_H, ...
+        'fimath',F_conv);
+
+    HH_fi = fi(HH_float, ...
+        1,WL_H,FL_H, ...
+        'fimath',F_conv);
+
+    sigma2_fi = fi(sigma2_over_P, ...
+        1,WL_S,FL_S, ...
+        'fimath',F_conv);
+
+    G_double = double(HH_fi)*double(H_fi) + ...
+               double(sigma2_fi)*eye(Nt);
+
+    G_fi = fi(G_double, ...
+        1,WL_G,FL_G, ...
+        'fimath',F_conv);
+
+    write_matrix_binary_fid(H_fi,WL_H,fid_H_conv);
+    write_matrix_binary_fid(HH_fi,WL_H,fid_HH_conv);
+    write_matrix_binary_fid(G_fi,WL_G,fid_G_conv);
+    write_scalar_binary_fid(sigma2_fi,WL_S,fid_S_conv);
+
+end
+
+%% ---------------- Close files ----------------
+
+fclose(fid_H_floor);
+fclose(fid_HH_floor);
+fclose(fid_G_floor);
+fclose(fid_S_floor);
+
+fclose(fid_H_conv);
+fclose(fid_HH_conv);
+fclose(fid_G_conv);
+fclose(fid_S_conv);
+
+fprintf('\nDone.\n');
+fprintf('Generated %d seeds.\n', NUM_SEEDS);
+fprintf('Files written into:\n');
+fprintf('   ./floor/\n');
+fprintf('   ./convergent/\n');
+
+%% =========================================================
+% LOCAL FUNCTIONS
+%% =========================================================
+
+function write_matrix_binary_fid(M_fi, WL, fid)
+
+    [Nr,Nc] = size(M_fi);
+
+    for r = 1:Nr
+
+        for c = 1:Nc
+
+            val_r = real(M_fi(r,c));
+            val_i = imag(M_fi(r,c));
+
+            bin_r = fi2bin_local(val_r,WL);
+            bin_i = fi2bin_local(val_i,WL);
+
+            fprintf(fid,'%s\n',bin_r);
+            fprintf(fid,'%s\n',bin_i);
+
+        end
+
+    end
+
+end
+
+function write_scalar_binary_fid(s_fi, WL, fid)
+
+    bin_r = fi2bin_local(real(s_fi),WL);
+
+    fprintf(fid,'%s\n',bin_r);
+
+end
+
+function bin_str = fi2bin_local(x_fi, WL)
+
+    int_val = storedInteger(x_fi);
+
+    int_val = int64(int_val);
+
+    if int_val < 0
+
+        uint_val = uint64(int_val + 2^WL);
+
+    else
+
+        uint_val = uint64(int_val);
+
+    end
+
+    bin_str = dec2bin(uint_val,WL);
+
+    if length(bin_str) > WL
+
+        bin_str = bin_str(end-WL+1:end);
+
+    end
+
+end

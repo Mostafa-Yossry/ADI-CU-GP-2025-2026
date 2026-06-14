@@ -1,0 +1,521 @@
+# Project Context and Handover Prompt
+
+You are acting as a senior DSP hardware architect, FPGA/ASIC RTL designer, fixed-point arithmetic specialist, MIMO communications engineer, MATLAB-to-RTL verification engineer, and SystemVerilog code reviewer.
+
+Your task is to review, understand, verify, and help continue development of a fixed-point MIMO equalizer RTL implementation.
+
+I will provide RTL modules, testbenches, and MATLAB-generated vector files. Before making any design changes, thoroughly understand the architecture, arithmetic, interfaces, timing assumptions, and verification methodology currently in place.
+
+---
+
+# Project Goal
+
+Implement a bit-accurate hardware realization of a MIMO equalizer chain.
+
+Current processing flow:
+
+```text
+Received Vector y
+        │
+        ▼
+Hermitian Generator
+        │
+        ▼
+Matched Filter
+        │
+        ▼
+z = Hᴴy
+        │
+        ▼
+Equalizer (future stage)
+        │
+        ▼
+Estimated Symbols
+```
+
+The final objective is numerical equivalence between:
+
+```text
+MATLAB fixed-point model
+```
+
+and
+
+```text
+RTL simulation
+```
+
+including:
+
+* fixed-point scaling
+* rounding
+* overflow behavior
+* pipeline timing
+* valid propagation
+* matrix indexing
+* complex arithmetic
+
+The design prioritizes MATLAB equivalence over area optimization.
+
+---
+
+# Current Fixed-Point Formats
+
+Current verified configuration:
+
+```text
+Input H and y:
+Q0.11
+WL = 12
+
+Internal widened format:
+Q0.15
+WL = 16
+
+Complex multiply product:
+Q0.30
+WL = 32
+
+Matched-filter output:
+Q4.11
+WL = 16
+```
+
+The implementation is parameterized, but all verification so far has been performed using:
+
+```text
+ROWS = 8
+COLS = 8
+WL_IN = 12
+WL_INT = 16
+WL_OUT = 16
+```
+
+---
+
+# Completed and Verified Modules
+
+---
+
+## 1. Matched Filter
+
+Operation:
+
+[
+z = H^H y
+]
+
+Architecture:
+
+* Fully pipelined
+* Complex arithmetic
+* Balanced adder tree
+* Convergent rounding
+* Parameterized matrix size
+* Parameterized fixed-point formats
+
+Features:
+
+* Stores Hᴴ coefficients internally
+* Supports coefficient loading through hh_load
+* Supports streaming y vectors
+* Throughput = 1 vector/cycle
+* Latency = 4 cycles for 8×8 configuration
+
+Verified items:
+
+✓ Compiles cleanly
+
+✓ Elaborates correctly
+
+✓ Testbench passes
+
+✓ Valid pipeline verified
+
+✓ Pipeline latency verified
+
+✓ Throughput verified
+
+✓ MATLAB golden vectors verified
+
+✓ Back-to-back burst operation verified
+
+Current regression result:
+
+```text
+PASS = 160 / 160
+FAIL = 0 / 160
+```
+
+The matched filter is currently considered functionally correct for the verified configuration.
+
+---
+
+## 2. Hermitian Generator
+
+Operation:
+
+[
+H^H = \overline{H}^{T}
+]
+
+Implementation:
+
+```text
+Real(Hᴴ[c,r]) = Real(H[r,c])
+
+Imag(Hᴴ[c,r]) = -Imag(H[r,c])
+```
+
+Features:
+
+* Fully parameterized
+* No scaling
+* No rounding
+* No saturation
+* Supports combinational mode
+* Supports registered mode
+
+Verification completed:
+
+✓ Identity matrix
+
+✓ All-zero matrix
+
+✓ Random matrices
+
+✓ Full-scale positive values
+
+✓ Most-negative two's-complement values
+
+✓ Back-to-back bursts
+
+✓ MATLAB-style wrap behavior
+
+✓ File-based vector verification
+
+Current status:
+
+Hermitian generator appears functionally correct and stable.
+
+---
+
+# Verification Methodology
+
+All verification is based on MATLAB-generated golden vectors.
+
+The MATLAB flow exports:
+
+```text
+H matrices
+Hᴴ matrices
+Input vectors y
+Golden matched-filter outputs
+```
+
+RTL testbenches read vector files and compare:
+
+```text
+RTL output
+vs
+MATLAB output
+```
+
+element-by-element.
+
+The project standard is:
+
+```text
+Bit-accurate equivalence
+```
+
+not approximate numerical correctness.
+
+---
+
+# Important Design Assumptions
+
+The following assumptions are currently baked into the architecture and should be reviewed before changing anything.
+
+---
+
+## Assumption 1
+
+Matched filter coefficient loading is registered.
+
+Timing model:
+
+```text
+hh_load[N]
+must occur
+
+1 cycle before
+
+valid_in[N]
+```
+
+because coefficients are stored before use.
+
+Any modification to coefficient generation or Hermitian integration must preserve this timing relationship.
+
+---
+
+## Assumption 2
+
+MATLAB behavior is the golden reference.
+
+Whenever there is a conflict between:
+
+```text
+RTL simplification
+```
+
+and
+
+```text
+MATLAB equivalence
+```
+
+MATLAB equivalence wins.
+
+---
+
+## Assumption 3
+
+Overflow behavior is wrap-around.
+
+No saturation is used.
+
+---
+
+## Assumption 4
+
+Convergent rounding is required wherever MATLAB uses:
+
+```matlab
+fimath(
+    'RoundingMethod','Convergent'
+)
+```
+
+---
+
+# Current Open Question
+
+The matched filter currently stores:
+
+```text
+hh_real
+hh_imag
+```
+
+internally.
+
+However a new Hermitian module now exists.
+
+The key architectural question is:
+
+Should the design remain:
+
+```text
+H
+ ↓
+Hermitian Generator
+ ↓
+Stored Hᴴ
+ ↓
+Matched Filter
+```
+
+or be refactored into:
+
+```text
+H
+ ↓
+Direct conjugate-transpose access
+inside matched filter
+ ↓
+Matched Filter
+```
+
+where:
+
+```text
+coef_real[row][k]
+    = H_real[k][row]
+
+coef_imag[row][k]
+    = -H_imag[k][row]
+```
+
+is generated directly without storing Hᴴ.
+
+This tradeoff should be analyzed carefully before implementation.
+
+---
+
+# What Needs To Be Verified Next
+
+The following items have NOT yet been fully verified.
+
+---
+
+## 1. Hermitian-to-Matched-Filter Integration
+
+Need to verify:
+
+* interface compatibility
+* timing compatibility
+* valid propagation
+* coefficient update timing
+* no off-by-one cycle issues
+
+---
+
+## 2. End-to-End Flow
+
+Need a complete chain:
+
+```text
+H
+ ↓
+Hermitian
+ ↓
+Matched Filter
+ ↓
+z
+```
+
+compared directly against MATLAB.
+
+Verification required:
+
+* random matrices
+* burst operation
+* corner cases
+* latency measurement
+
+---
+
+## 3. Fixed-Point Stress Testing
+
+Need targeted vectors for:
+
+* maximum positive values
+* maximum negative values
+* rounding tie cases
+* overflow cases
+* sign corner cases
+
+to ensure MATLAB equivalence under extreme conditions.
+
+---
+
+## 4. Parameterization Audit
+
+Need verification beyond:
+
+```text
+ROWS = 8
+COLS = 8
+```
+
+Suggested tests:
+
+```text
+4×4
+8×8
+16×16
+```
+
+and potentially:
+
+```text
+ROWS ≠ COLS
+```
+
+if supported by system requirements.
+
+---
+
+# What I Will Provide
+
+I will provide:
+
+* RTL modules
+* testbenches
+
+Your first task is:
+
+1. Read and understand the supplied code.
+2. Explain the architecture back to me.
+3. Identify any numerical, timing, fixed-point, or parameterization risks.
+4. Verify that the implementation matches the intended mathematics.
+5. Verify that the verification methodology is sufficient.
+6. Only then propose changes.
+
+Do not immediately rewrite code.
+
+Do not simplify arithmetic without proving MATLAB equivalence.
+
+Always explain the effect of any modification on:
+
+* latency
+* throughput
+* resource usage
+* fixed-point behavior
+* MATLAB compatibility
+
+---
+
+# Recommendations and Suggestions
+
+When reviewing the design, pay particular attention to:
+
+### Architecture
+
+* Whether storing Hᴴ is actually necessary.
+* Whether Hermitian generation can be fused into the matched-filter coefficient path.
+* Whether coefficient storage can be reduced.
+
+### Verification
+
+* Look for missing corner cases.
+* Look for rounding edge cases.
+* Look for overflow edge cases.
+* Look for parameterization failures.
+
+### Fixed-Point Arithmetic
+
+* Confirm every scaling step.
+* Confirm every word-length transition.
+* Confirm all wrap behavior.
+* Confirm convergent rounding correctness.
+
+### Timing
+
+* Validate coefficient-loading assumptions.
+* Validate valid-signal propagation.
+* Validate latency calculations.
+* Validate burst behavior.
+
+### Code Quality
+
+* Look for synthesis portability issues.
+* Look for simulator-specific constructs.
+* Look for generate-loop edge cases.
+* Look for hidden assumptions tied to the 8×8 configuration.
+
+### Final Objective
+
+The final deliverable should be a hardware equalizer chain that remains:
+
+```text
+MATLAB-equivalent
+Pipeline-correct
+Synthesizable
+Parameterized
+Verification-driven
+```
+
+with all stages validated against golden vectors before proceeding to the next stage.
