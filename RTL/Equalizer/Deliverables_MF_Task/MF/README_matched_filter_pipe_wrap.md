@@ -1,8 +1,11 @@
+
 # `matched_filter_pipe_wrap` — Black-Box Reference
 
-Computes the MIMO matched-filter operation **ŷ = H^H · y** on complex vectors,
-fully pipelined, one result per clock cycle at full throughput.  
-All ports use flat packed buses — no unpacked arrays.
+Computes the MIMO matched-filter operation on complex vectors:
+
+$$\mathbf{z} = \mathbf{H}^H \cdot \mathbf{y}$$
+
+The module is fully spatially unrolled and pipelined, delivering one result per clock cycle at full steady-state throughput. All ports use flat, contiguous packed buses to simplify integration with top-level interconnects (no unpacked arrays at the boundary).
 
 ---
 
@@ -10,31 +13,39 @@ All ports use flat packed buses — no unpacked arrays.
 
 | File | Role |
 |---|---|
-| `matched_filter_pipe_wrap.sv` | Top-level wrapper (instantiate this) |
-| `polished_new_matched_filter.sv` | Core pipeline (must be in the same compile list) |
+| `matched_filter_pipe_wrap.sv` | Top-level flat-bus wrapper (instantiate this) |
+| `matched_filter_unrolled.sv` | Core unrolled pipeline engine (must be in the same compile list) |
 
 ---
 
 ## Parameters
 
-All parameters have working defaults for an 8×8, Q0.11 input / Q4.11 output system.
-**You must keep the three format consistency rules satisfied** (shown below) or elaboration will abort with a `$fatal`.
+All parameters have verified defaults for an $8 \times 8$ system operating with Q1.11 inputs and Q5.11 outputs. Elaboration-time sanity checks will abort compilation with a `$fatal` error if format consistency rules are violated.
 
+### System Dimension
 | Parameter | Default | Description |
 |---|---|---|
-| `N` | `8` | System dimension — both rows and columns of H^H. **Must be a power of two.** |
-| `MF_WL_IN` | `12` | Input word length (bits). Rule: `MF_WL_IN = 1 + MF_INT_BITS_IN + MF_FRAC_BITS_IN` |
-| `MF_INT_BITS_IN` | `0` | Integer bits of input (excluding sign) |
-| `MF_FRAC_BITS_IN` | `11` | Fractional bits of input |
-| `MF_INTERNAL_WL` | `16` | Internal word length (after widening, before multiply). Must be ≥ `MF_WL_IN`. Rule: `MF_INTERNAL_WL = 1 + MF_INTERNAL_INT_BITS + MF_INTERNAL_FRAC_BITS` |
-| `MF_INTERNAL_INT_BITS` | `0` | Internal integer bits. Must be ≥ `MF_INT_BITS_IN` |
-| `MF_INTERNAL_FRAC_BITS` | `15` | Internal fractional bits. Must be ≥ `MF_FRAC_BITS_IN` |
-| `MF_WL_OUT` | `16` | Output word length (bits). Rule: `MF_WL_OUT = 1 + MF_INT_BITS_OUT + MF_FRAC_BITS_OUT` |
-| `MF_INT_BITS_OUT` | `4` | Integer bits of output (excluding sign) |
-| `MF_FRAC_BITS_OUT` | `11` | Fractional bits of output |
+| `N` | `8` | System dimension (both rows and columns). **Must equal 8** (enforced by core). |
 
-> **Note:** output elements are `MF_WL_OUT` bits wide, which may differ from `MF_WL_IN`.
-> With defaults, inputs are 12-bit and outputs are 16-bit.
+### Fixed-Point Formats
+| Parameter | Default | Type / Format | Description / Constraints |
+|---|---|---|---|
+| `MF_WL_IN` | `12` | Input Word Length | Total bits for $\mathbf{H}^H$ and $\mathbf{y}$ inputs |
+| `MF_FL_IN` | `11` | Input Fraction Bits | Q1.11 format |
+| `MF_WL_W` | `16` | Widened Word Length | Internal width after zero-padding, before multiplication. **Must be $\ge$ `MF_WL_IN`** |
+| `MF_FL_W` | `15` | Widened Fraction Bits | Q1.15 format. **Must be $\ge$ `MF_FL_IN`** |
+| `MF_WL_PROD` | `32` | Product Word Length | Full-precision multiplication result |
+| `MF_FL_PROD` | `30` | Product Fraction Bits | Q2.30 format |
+| `MF_WL_OUT` | `16` | Output Word Length | Total bits for the final output vector $\mathbf{z}$ |
+| `MF_FL_OUT` | `11` | Output Fraction Bits | Q5.11 format. **Must equal `MF_FL_Q5`** |
+
+### Accumulator Stage Fraction Bits (16-Bit Accumulators)
+| Parameter | Default | Format | Description |
+|---|---|---|---|
+| `MF_FL_Q2` | `14` | Q2.14 | Accumulator stage fraction bits ($k=1$) |
+| `MF_FL_Q3` | `13` | Q3.13 | Accumulator stage fraction bits ($k=2$) |
+| `MF_FL_Q4` | `12` | Q4.12 | Accumulator stage fraction bits ($k=3,4$) |
+| `MF_FL_Q5` | `11` | Q5.11 | Accumulator stage fraction bits ($k=5 \dots 8$) |
 
 ---
 
@@ -44,135 +55,144 @@ All parameters have working defaults for an 8×8, Q0.11 input / Q4.11 output sys
 
 | Port | Dir | Width | Description |
 |---|---|---|---|
-| `clk` | in | 1 | System clock. All registers are positive-edge triggered. |
-| `rst_n` | in | 1 | Active-low asynchronous reset. Hold low for ≥ 2 cycles before use. |
-| `en` | in | 1 | Pipeline enable. Hold high for normal operation. Pulling low freezes **all** pipeline stages simultaneously — no data is lost; it resumes correctly when re-asserted. Does **not** gate `hh_load`. |
+| `clk` | in | `1` | System clock. All internal registers are positive-edge triggered. |
+| `rst_n` | in | `1` | Active-low asynchronous reset. |
+| `en` | in | `1` | Pipeline enable. Assert high for normal operation. Pulling low freezes all pipeline stages simultaneously without data loss. Does **not** gate `hh_load`. |
 
-### H^H Coefficient Load (slow / one-shot path)
-
-| Port | Dir | Width | Description |
-|---|---|---|---|
-| `hh_load` | in | 1 | Latch strobe. Assert for **exactly one** rising clock edge. |
-| `hh_re_flat` | in | `N×N×MF_WL_IN` | Real part of H^H, row-major packed (see packing below). Must be stable on the `hh_load` posedge. |
-| `hh_im_flat` | in | `N×N×MF_WL_IN` | Imaginary part of H^H, same packing. |
-
-> **Timing rule:** `hh_load` must be registered **at least one cycle before** the first `y_valid` that uses those coefficients. A new `hh_load` can be issued on the same negedge as the preceding frame's `y_valid` (overlap loading). `hh_load` is **not** gated by `en` and takes effect even when the pipeline is stalled.
-
-### Streaming y Input (one vector per cycle)
+### $\mathbf{H}^H$ Coefficient Load (Slow / One-Shot Path)
 
 | Port | Dir | Width | Description |
 |---|---|---|---|
-| `y_valid` | in | 1 | Assert high for one cycle when `y_re/im_flat` holds a valid input vector. Back-to-back assertion (every cycle) is supported. |
-| `y_re_flat` | in | `N×MF_WL_IN` | Real part of y, LSB-first packed. |
-| `y_im_flat` | in | `N×MF_WL_IN` | Imaginary part of y, LSB-first packed. |
+| `hh_load` | in | `1` | Latch strobe. Assert for **exactly one** rising clock edge to load coefficients. |
+| `hh_re_flat` | in | `N * N * MF_WL_IN` | Real part of $\mathbf{H}^H$, row-major packed. Must be stable on the `hh_load` posedge. |
+| `hh_im_flat` | in | `N * N * MF_WL_IN` | Imaginary part of $\mathbf{H}^H$, row-major packed. |
+
+> **Timing Rule:** `hh_load` must be registered **at least one cycle before** the first `y_valid` that uses those coefficients. Overlap loading is supported (a new matrix can be safely registered while old data streams through). `hh_load` ignores the `en` stall signal.
+
+### Streaming $\mathbf{y}$ Vector Input (One Vector per Cycle)
+
+| Port | Dir | Width | Description |
+|---|---|---|---|
+| `y_valid` | in | `1` | Assert high for one cycle when `y_re_flat` and `y_im_flat` hold valid data. Supports back-to-back assertions every cycle. |
+| `y_re_flat` | in | `N * MF_WL_IN` | Real part of input vector $\mathbf{y}$, LSB-first packed. |
+| `y_im_flat` | in | `N * MF_WL_IN` | Imaginary part of input vector $\mathbf{y}$, LSB-first packed. |
 
 ### Outputs
 
 | Port | Dir | Width | Description |
 |---|---|---|---|
-| `valid_out` | out | 1 | High for one cycle when `x_re/im_flat` holds a valid result. |
-| `gy_enable` | out | 1 | Sticky flag. Stays 0 after reset; latches to 1 on the first `valid_out` and stays 1 until the next reset. Use this to gate downstream logic until the pipeline has produced its first output. |
-| `x_re_flat` | out | `N×MF_WL_OUT` | Real part of ŷ = H^H·y, LSB-first packed. Valid when `valid_out` is high. |
-| `x_im_flat` | out | `N×MF_WL_OUT` | Imaginary part of ŷ, same packing. |
+| `valid_out` | out | `1` | High for one cycle when `x_re_flat` and `x_im_flat` hold a valid computed vector. |
+| `gy_enable` | out | `1` | Sticky pipeline-ready flag. Stays `0` after reset; latches to `1` on the very first `valid_out` pulse and remains `1` until the next reset. |
+| `x_re_flat` | out | `N * MF_WL_OUT` | Real part of output vector $\mathbf{z}$, LSB-first packed. Valid when `valid_out` is high. |
+| `x_im_flat` | out | `N * MF_WL_OUT` | Imaginary part of output vector $\mathbf{z}$, LSB-first packed. |
 
 ---
 
 ## Bus Packing Convention
 
-All buses are **LSB-first** — element 0 occupies the least-significant bits.
+All flat array buses are packed **LSB-first**, meaning element 0 occupies the least-significant bit slices.
 
-**y / x vectors** (`N` elements):
-```
-flat[ k * WL +: WL ]  =  element[k]        k = 0 .. N-1
-```
+### $\mathbf{y}$ Input / $\mathbf{z}$ Output Vectors ($N$ elements)
+```flat
+flat[ k * WL +: WL ] = element[k]           // k = 0 .. N-1
 
-**H^H matrix** (`N×N` elements, row-major):
-```
-flat[ (r*N + c) * MF_WL_IN +: MF_WL_IN ]  =  H^H[r][c]
-                                               r = row, c = col
 ```
 
-**SystemVerilog slice syntax to extract element k from y:**
+### $\mathbf{H}^H$ Matrix ($N \times N$ elements, row-major)
+
+```flat
+flat[ (r*N + c) * MF_WL_IN +: MF_WL_IN ] = H^H[r][c]   // r = row, c = col
+
+```
+
+### SystemVerilog Extraction Examples
+
 ```systemverilog
-y_re_flat[ k * MF_WL_IN +: MF_WL_IN ]
+// Extracting element 'k' from the real y vector
+wire signed [MF_WL_IN-1:0] y_element_k = y_re_flat[ k * MF_WL_IN +: MF_WL_IN ];
+
+// Extracting row 'r', column 'c' from the real matrix
+wire signed [MF_WL_IN-1:0] hh_element_rc = hh_re_flat[ (r*N + c)*MF_WL_IN +: MF_WL_IN ];
+
 ```
 
 ---
 
 ## Pipeline Latency
 
-```
-LATENCY = 1 + $clog2(N)  cycles
-```
+Because the internal architecture is spatially unrolled into 8 MAC steps across 2 processing stages with a sequential accumulator chain and an output register, the latency is fixed:
 
-| N | Latency |
-|---|---|
-| 4 | 3 cycles |
-| **8** | **4 cycles** (default) |
-| 16 | 5 cycles |
-| 32 | 6 cycles |
+$$\text{LATENCY} = 10 \text{ clock cycles}$$
 
-`valid_out` asserts exactly `LATENCY` cycles after the corresponding `y_valid`.  
-Throughput is **1 result per clock cycle** at full rate (back-to-back `y_valid`).
-
-If you need the latency value at elaboration time in a wrapping module:
-```systemverilog
-localparam int MY_LAT = u_wrap.u_mf.LATENCY;
-```
+`valid_out` asserts exactly **10 cycles** after its corresponding `y_valid`. Steady-state throughput is maintained at **1 output vector per clock cycle** under a continuous input stream.
 
 ---
 
-## Fixed-Point Arithmetic
+## Fixed-Point Scaling
 
-The core uses **convergent rounding (round-half-to-even)** and **wrap-on-overflow** at every stage, matching MATLAB `fimath` with `RoundingMethod='Convergent'`, `OverflowAction='Wrap'`. Products are computed at full precision internally before being rounded to the output format.
+The core module performs convergent rounding (round-half-to-even) and wraps on overflow at each arithmetic stage, matching the behavior of MATLAB's `fimath` configured for `RoundingMethod='Convergent'` and `OverflowAction='Wrap'`.
 
-To convert integer output values to real:
-```
-real_value = signed_integer_output / 2^MF_FRAC_BITS_OUT
-```
-With defaults: divide by **2048**.
+To convert the integer bits on the output bus back to real-world floating-point values:
+
+$$\text{real\_value} = \frac{\text{signed\_integer\_output}}{2^{\text{MF\_FL\_OUT}}}$$
+
+Using default parameter values, divide the output integers by **2048** ($2^{11}$).
 
 ---
 
-## Instantiation Example (defaults)
+## Instantiation Example (Defaults)
 
 ```systemverilog
 matched_filter_pipe_wrap #(
-    .N                   ( 8  ),
-    .MF_WL_IN            ( 12 ),
-    .MF_INT_BITS_IN      ( 0  ),
-    .MF_FRAC_BITS_IN     ( 11 ),
-    .MF_INTERNAL_WL      ( 16 ),
-    .MF_INTERNAL_INT_BITS ( 0 ),
-    .MF_INTERNAL_FRAC_BITS(15 ),
-    .MF_WL_OUT           ( 16 ),
-    .MF_INT_BITS_OUT     ( 4  ),
-    .MF_FRAC_BITS_OUT    ( 11 )
-) u_mf_wrap (
+    .N                      ( 8  ), // Enforced 8x8 system
+    .MF_WL_IN               ( 12 ), // Q1.11 input
+    .MF_FL_IN               ( 11 ),
+    .MF_WL_W                ( 16 ), // Q1.15 widened
+    .MF_FL_W                ( 15 ),
+    .MF_WL_PROD             ( 32 ), // Q2.30 product
+    .MF_FL_PROD             ( 30 ),
+    .MF_FL_Q2               ( 14 ), // Internal stages
+    .MF_FL_Q3               ( 13 ),
+    .MF_FL_Q4               ( 12 ),
+    .MF_FL_Q5               ( 11 ),
+    .MF_WL_OUT              ( 16 ), // Q5.11 output
+    .MF_FL_OUT              ( 11 )
+) u_mf_pipe_wrap (
     .clk        ( clk        ),
     .rst_n      ( rst_n      ),
-    .en         ( 1'b1       ),
+    .en         ( en         ),
+    
+    // Coefficient Config Path
     .hh_load    ( hh_load    ),
-    .hh_re_flat ( hh_re_flat ),  // [N*N*12-1:0]
-    .hh_im_flat ( hh_im_flat ),  // [N*N*12-1:0]
+    .hh_re_flat ( hh_re_flat ), // [8*8*12-1:0]
+    .hh_im_flat ( hh_im_flat ), // [8*8*12-1:0]
+    
+    // Streaming Input Path
     .y_valid    ( y_valid    ),
-    .y_re_flat  ( y_re_flat  ),  // [N*12-1:0]
-    .y_im_flat  ( y_im_flat  ),  // [N*12-1:0]
+    .y_re_flat  ( y_re_flat  ), // [8*12-1:0]
+    .y_im_flat  ( y_im_flat  ), // [8*12-1:0]
+    
+    // Streaming Output Path
     .valid_out  ( valid_out  ),
     .gy_enable  ( gy_enable  ),
-    .x_re_flat  ( x_re_flat  ),  // [N*16-1:0]
-    .x_im_flat  ( x_im_flat  )   // [N*16-1:0]
+    .x_re_flat  ( x_re_flat  ), // [8*16-1:0]
+    .x_im_flat  ( x_im_flat  )  // [8*16-1:0]
 );
+
 ```
 
 ---
 
 ## Operational Checklist
 
-1. Assert `rst_n = 0` for at least 2 cycles on power-up, then release.
-2. Drive `hh_re/im_flat` with H^H and pulse `hh_load` for one cycle.
-3. Wait at least one cycle after `hh_load` before asserting `y_valid`.
-4. Drive `y_re/im_flat` and assert `y_valid` for each input vector.
-5. Monitor `valid_out` — results appear `LATENCY` cycles later on `x_re/im_flat`.
-6. To update H^H mid-stream: load new coefficients one `hh_load` cycle before the first `y_valid` that should use them. Overlap with a running `y_valid` stream is supported.
-7. To stall: deassert `en`. No data is lost. Re-assert to resume; latency for in-flight frames increases by the number of stall cycles.
+1. **Power-Up Reset:** Assert `rst_n = 0` for at least 2 clock cycles, then deassert.
+2. **Coefficient Loading:** Drive `hh_re_flat` and `hh_im_flat` with the matrix coefficients, then pulse `hh_load` high for exactly one clock cycle.
+3. **Pipeline Priming:** Wait at least one clock cycle after loading coefficients before asserting the first `y_valid`.
+4. **Data Streaming:** Drive your vector data on the `y_flat` lines and assert `y_valid`. You can drive data back-to-back continuously.
+5. **Output Capture:** Capture processed vectors on `x_re_flat` and `x_im_flat` when `valid_out` goes high (exactly 10 clock cycles later).
+6. **Coefficient Hot-Swapping:** To update $\mathbf{H}^H$ mid-stream, cycle `hh_load` one clock cycle before the data vector intended for the new matrix arrives.
+7. **Stalling the Pipeline:** Drive `en = 0` to halt the pipeline. No data will be dropped or corrupted; when `en` returns high, processing resumes with the latency stretched precisely by the duration of the stall.
+
+```
+
+```
