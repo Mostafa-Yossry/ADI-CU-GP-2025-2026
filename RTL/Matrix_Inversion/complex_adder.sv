@@ -23,7 +23,7 @@
 //
 // Note: rounding only applies when SHIFT_OUT_R > 0.
 //       Left shifts and no-shift cases are identical for both methods.
-// ============================================================
+// ============================================================  
 
 module complex_adder #(
            parameter WIDTH              = 16            ,

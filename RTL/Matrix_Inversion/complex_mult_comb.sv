@@ -22,7 +22,7 @@
 //
 // Note: rounding only applies when SHIFT_R > 0.
 //       Left shifts and no-shift cases are identical for both methods.
-// ============================================================
+// ============================================================  
 
 module complex_mult_comb #(
            parameter WIDTH           = 16           ,
