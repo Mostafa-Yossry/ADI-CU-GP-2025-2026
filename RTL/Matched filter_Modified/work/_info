@@ -9,27 +9,26 @@ z2
 cModel Technology
 Z0 dC:/questasim64_10.7c/examples
 T_opt
-!s110 1781336973
-Vf@4Q=?[VT?b<Fg]<;KFAJ2
-04 22 4 work tb_matched_filter_pipe fast 0
-=1-841b77d6ef2f-6a2d0b8d-345-1450
+!s110 1781395193
+VjbUDiTC4cZ0zjPe6:KaEa2
+04 21 4 work tb_hermitian_mf_chain fast 0
+=1-841b77d6ef2f-6a2deef8-395-3904
 Z1 o-quiet -auto_acc_if_foreign -work work +acc
 Z2 tCvgOpt 0
 n@_opt
 Z3 OL;O;10.7c;67
-R0
 T_opt1
-!s110 1781336103
-VQ9MNLSVQCb4>haaXadmMV0
-04 17 4 work tb_hermitian_pipe fast 0
-=1-841b77d6ef2f-6a2d0827-b6-409c
+Z4 !s110 1781392215
+V<LZiYJ=5C`QejgFi<Kl3>3
+04 31 4 work tb_ref_matched_filter_pipe_wrap fast 0
+=3-841b77d6ef2f-6a2de357-a2-4288
 R1
 R2
 n@_opt1
 R3
 R0
 T_opt2
-Z4 !s110 1781338596
+!s110 1781338596
 Va86OKE4ehZZ[aUj4@Ng`N0
 04 27 4 work tb_matched_filter_pipe_wrap fast 0
 =3-841b77d6ef2f-6a2d11e4-2dc-e1c
@@ -37,77 +36,102 @@ R1
 R2
 n@_opt2
 R3
+R0
 vherm_mf_chain
 Z5 DXx6 sv_std 3 std 0 22 d=_JfHTnXCN[H5FjiaJJc0
-R4
+Z6 !s110 1781392214
 !i10b 1
 !s100 TTC6FZ`_EI=ZLD76Jjf`60
 I4UTmQQG3>a<0Sbe^[YoUU0
-Z6 VDg1SIo80bB@j0V0VzS_@n1
+Z7 VDg1SIo80bB@j0V0VzS_@n1
 !s105 herm_mf_chain_sv_unit
 S1
-Z7 dD:/A Graduation Project/Matched filter_Modified
+Z8 dD:/A Graduation Project/Matched filter_Modified
 w1781334354
 8herm_mf_chain.sv
 Fherm_mf_chain.sv
-Z8 L0 73
-Z9 OL;L;10.7c;67
+Z9 L0 73
+Z10 OL;L;10.7c;67
 r1
 !s85 0
 31
-Z10 !s108 1781338596.000000
-Z11 !s107 tb_polished_mf.sv|tb_mf_wrap.sv|tb_matched_filter_pipee.sv|tb_hermitian_pipe.sv|tb_herm_mf_chain.sv|polished_new_matched_filter.sv|polished_hermitian_pipe.sv|new_matched_filter.sv|hermitian_pipe.sv|herm_mf_chain.sv|MF_Wrap.sv|MF_Flattened_out.sv|
-Z12 !s90 -reportprogress|300|MF_Flattened_out.sv|MF_Wrap.sv|herm_mf_chain.sv|hermitian_pipe.sv|new_matched_filter.sv|polished_hermitian_pipe.sv|polished_new_matched_filter.sv|tb_herm_mf_chain.sv|tb_hermitian_pipe.sv|tb_matched_filter_pipee.sv|tb_mf_wrap.sv|tb_polished_mf.sv|
+Z11 !s108 1781392214.000000
+Z12 !s107 tb_ref_mf_wrap.sv|tb_polished_mf.sv|tb_mf_wrap.sv|tb_matched_filter_pipee.sv|tb_hermitian_pipe.sv|tb_herm_mf_chain.sv|ref_polished_mf.sv|ref_mf_wrap.sv|polished_new_matched_filter.sv|polished_hermitian_pipe.sv|new_matched_filter.sv|hermitian_pipe.sv|herm_mf_chain.sv|MF_Wrap.sv|
+Z13 !s90 -reportprogress|300|MF_Wrap.sv|herm_mf_chain.sv|hermitian_pipe.sv|new_matched_filter.sv|polished_hermitian_pipe.sv|polished_new_matched_filter.sv|ref_mf_wrap.sv|ref_polished_mf.sv|tb_herm_mf_chain.sv|tb_hermitian_pipe.sv|tb_matched_filter_pipee.sv|tb_mf_wrap.sv|tb_polished_mf.sv|tb_ref_mf_wrap.sv|
 !i113 0
-Z13 o-L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+Z14 o-L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+R2
+vhermitian_mf_chain
+R5
+Z15 !s110 1781395186
+!i10b 1
+!s100 >3;AB5Y2[bi0ZYlFFWWDH1
+IlLRhDio[lm@i39fi1``da0
+R7
+!s105 hermitian_mf_chain_sv_unit
+S1
+R8
+w1781395123
+8hermitian_mf_chain.sv
+Fhermitian_mf_chain.sv
+L0 55
+R10
+r1
+!s85 0
+31
+Z16 !s108 1781395186.000000
+Z17 !s107 tb_ref_mf_wrap.sv|tb_polished_mf.sv|tb_mf_wrap.sv|tb_matched_filter_pipee.sv|tb_hermitian_pipe.sv|tb_hermitian_mf_chain.sv|ref_polished_mf.sv|ref_mf_wrap.sv|polished_new_matched_filter.sv|polished_hermitian_pipe.sv|hermitian_pipe.sv|hermitian_mf_chain.sv|MF_Wrap.sv|
+Z18 !s90 -reportprogress|300|MF_Wrap.sv|hermitian_mf_chain.sv|hermitian_pipe.sv|polished_hermitian_pipe.sv|polished_new_matched_filter.sv|ref_mf_wrap.sv|ref_polished_mf.sv|tb_hermitian_mf_chain.sv|tb_hermitian_pipe.sv|tb_matched_filter_pipee.sv|tb_mf_wrap.sv|tb_polished_mf.sv|tb_ref_mf_wrap.sv|
+!i113 0
+R14
 R2
 vhermitian_pipe
 R5
-R4
+R15
 !i10b 1
 !s100 ZY<FmdkSQBN;[AS4lUX4?3
 IneMjCV0;nW2kzcloM7^c_0
-R6
+R7
 !s105 polished_hermitian_pipe_sv_unit
 S1
-R7
+R8
 w1781335713
 8polished_hermitian_pipe.sv
 Fpolished_hermitian_pipe.sv
 L0 24
-R9
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R16
+R17
+R18
 !i113 0
-R13
+R14
 R2
 vhermitian_pipeW
 R5
-R4
+R15
 !i10b 1
 !s100 f<BYKJX2Y9IL7b@c[c5AB1
 I7QJ`7]Ln4S_Ce4Tj6]Z6]0
-R6
+R7
 !s105 hermitian_pipe_sv_unit
 S1
-R7
+R8
 w1781336097
 8hermitian_pipe.sv
 Fhermitian_pipe.sv
 L0 185
-R9
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R16
+R17
+R18
 !i113 0
-R13
+R14
 R2
 nhermitian_pipe@w
 vinput_widen
@@ -116,15 +140,15 @@ R5
 !i10b 1
 !s100 Hg76QC=IU>QfhbLBbDcWQ2
 I;C28`Sic8QcnhDzUn`^B40
-R6
+R7
 !s105 input_widen_sv_unit
 S1
-R7
+R8
 w1778203071
 8input_widen.sv
 Finput_widen.sv
 L0 37
-R9
+R10
 r1
 !s85 0
 31
@@ -132,96 +156,144 @@ r1
 !s107 tb_polished_mf.sv|tb_matched_filter_pipee.sv|tb_hermitian_pipe.sv|tb_herm_mf_chain.sv|polished_new_matched_filter.sv|polished_hermitian_pipe.sv|new_matched_filter.sv|input_widen.sv|hermitian_pipe.sv|herm_mf_chain.sv|
 !s90 -reportprogress|300|herm_mf_chain.sv|hermitian_pipe.sv|input_widen.sv|new_matched_filter.sv|polished_hermitian_pipe.sv|polished_new_matched_filter.sv|tb_herm_mf_chain.sv|tb_hermitian_pipe.sv|tb_matched_filter_pipee.sv|tb_polished_mf.sv|
 !i113 0
-R13
+R14
 R2
 vmatched_filter_pipe
 R5
-R4
+R15
 !i10b 1
 !s100 BG:mobVfAiKV`gC8YWl]g1
 IPb88oMOQ``;g@ZPiP>@H23
-R6
+R7
 !s105 polished_new_matched_filter_sv_unit
 S1
-R7
+R8
 w1781336752
 8polished_new_matched_filter.sv
 Fpolished_new_matched_filter.sv
 L0 10
-R9
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R16
+R17
+R18
 !i113 0
-R13
+R14
 R2
 vmatched_filter_pipe_wrap
 R5
-R4
+R15
 !i10b 1
 !s100 TbMH]LNSLBHeKcO17^le02
 IX<flXDBKP[T:8l`iAT5_T2
-R6
+R7
 !s105 MF_Wrap_sv_unit
 S1
-R7
+R8
 w1781338181
 8MF_Wrap.sv
 FMF_Wrap.sv
 L0 27
-R9
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R16
+R17
+R18
 !i113 0
-R13
+R14
 R2
 vmatched_filter_pipeW
 R5
-R4
+R6
 !i10b 1
 !s100 LEiZ;J5cB=]MZTlEE[4CI3
 IA2[IR;3;Ud8n?XCWhM^<61
-R6
+R7
 !s105 new_matched_filter_sv_unit
 S1
-R7
+R8
 w1781336082
 8new_matched_filter.sv
 Fnew_matched_filter.sv
 L0 89
-R9
+R10
 r1
 !s85 0
 31
-R10
 R11
 R12
-!i113 0
 R13
+!i113 0
+R14
 R2
 nmatched_filter_pipe@w
+vref_matched_filter_pipe
+R5
+R15
+!i10b 1
+!s100 2R]I?DMXJ>^N2[T]Z;LNz3
+IaUKI7a;2]VTL[]9cOiVEz1
+R7
+!s105 ref_polished_mf_sv_unit
+S1
+R8
+w1781392057
+8ref_polished_mf.sv
+Fref_polished_mf.sv
+L0 31
+R10
+r1
+!s85 0
+31
+R16
+R17
+R18
+!i113 0
+R14
+R2
+vref_matched_filter_pipe_wrap
+R5
+R15
+!i10b 1
+!s100 d=k7>Y71b`g:Jl_Zz7YKP3
+IYJThN1oVczJl8AaLeQ?6@0
+R7
+!s105 ref_mf_wrap_sv_unit
+S1
+R8
+w1781392209
+8ref_mf_wrap.sv
+Fref_mf_wrap.sv
+Z19 L0 35
+R10
+r1
+!s85 0
+31
+R16
+R17
+R18
+!i113 0
+R14
+R2
 vtb_herm_mf_chain
 R5
 !s110 1781334509
 !i10b 1
 !s100 RhQE9JcdHJl9S5;_fmQcP3
 IC_RRCGAbOaB7>lce4WXS:3
-R6
-Z14 !s105 tb_herm_mf_chain_sv_unit
-S1
 R7
-w1781267715
-Z15 8tb_herm_mf_chain.sv
-Z16 Ftb_herm_mf_chain.sv
+Z20 !s105 tb_herm_mf_chain_sv_unit
+S1
 R8
+w1781267715
+Z21 8tb_herm_mf_chain.sv
+Z22 Ftb_herm_mf_chain.sv
 R9
+R10
 r1
 !s85 0
 31
@@ -229,7 +301,7 @@ r1
 !s107 tb_matched_filter_pipee.sv|tb_hermitian_pipe.sv|tb_herm_mf_chain.sv|new_matched_filter.sv|input_widen.sv|hermitian_pipe.sv|herm_mf_chain.sv|
 !s90 -reportprogress|300|herm_mf_chain.sv|hermitian_pipe.sv|input_widen.sv|new_matched_filter.sv|tb_herm_mf_chain.sv|tb_hermitian_pipe.sv|tb_matched_filter_pipee.sv|
 !i113 0
-R13
+R14
 R2
 vtb_herm_mf_integration
 R5
@@ -237,118 +309,166 @@ R4
 !i10b 1
 !s100 ;[DG9Y_i1_G@C6d7a?T3F3
 Ib>PmX6FOWI@9>J=lWe7L`2
-R6
-R14
-S1
 R7
+R20
+S1
+R8
 w1781335087
-R15
-R16
+R21
+R22
 L0 36
-R9
+R10
 r1
 !s85 0
 31
-R10
 R11
 R12
-!i113 0
 R13
+!i113 0
+R14
+R2
+vtb_hermitian_mf_chain
+R5
+R15
+!i10b 1
+!s100 542GK=goFncJ1@I]LN5_i1
+IcXfbh_n32A?Alb5F1>6Wa1
+R7
+!s105 tb_hermitian_mf_chain_sv_unit
+S1
+R8
+w1781395183
+8tb_hermitian_mf_chain.sv
+Ftb_hermitian_mf_chain.sv
+L0 46
+R10
+r1
+!s85 0
+31
+R16
+R17
+R18
+!i113 0
+R14
 R2
 vtb_hermitian_pipe
 R5
-R4
+R15
 !i10b 1
 !s100 ikCoodP3;^ZkjlM7]3K:U2
 IHl_cazEImZLdDXEf_;J:R2
-R6
+R7
 !s105 tb_hermitian_pipe_sv_unit
 S1
-R7
+R8
 w1781332621
 8tb_hermitian_pipe.sv
 Ftb_hermitian_pipe.sv
-L0 35
-R9
+R19
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R16
+R17
+R18
 !i113 0
-R13
+R14
 R2
 vtb_matched_filter_pipe
 R5
-R4
+R15
 !i10b 1
 !s100 L6SRSHDU>RemfAGbKM6>a3
 Ia:kb]c13n9[`0AAP0H[<Q0
-R6
+R7
 !s105 tb_polished_mf_sv_unit
 S1
-R7
+R8
 w1781336952
 8tb_polished_mf.sv
 Ftb_polished_mf.sv
-R8
 R9
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R16
+R17
+R18
 !i113 0
-R13
+R14
 R2
 vtb_matched_filter_pipe_wrap
 R5
-R4
+R15
 !i10b 1
 !s100 1:LP0GMPk7bh3a0liDZCU2
 IM00VRiJb]Df9920>Ke_g62
-R6
+R7
 !s105 tb_mf_wrap_sv_unit
 S1
-R7
+R8
 w1781338583
 8tb_mf_wrap.sv
 Ftb_mf_wrap.sv
-L0 48
-R9
+Z23 L0 48
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R16
+R17
+R18
 !i113 0
-R13
+R14
 R2
 vtb_matched_filter_pipeW
 R5
-R4
+R15
 !i10b 1
 !s100 MP4An_VhnDVZH;O<`nYbZ0
 I_8ATN;b9k;DGZIl;f3Pi62
-R6
+R7
 !s105 tb_matched_filter_pipee_sv_unit
 S1
-R7
+R8
 w1781336960
 8tb_matched_filter_pipee.sv
 Ftb_matched_filter_pipee.sv
-R8
 R9
+R10
 r1
 !s85 0
 31
-R10
-R11
-R12
+R16
+R17
+R18
 !i113 0
-R13
+R14
 R2
 ntb_matched_filter_pipe@w
+vtb_ref_matched_filter_pipe_wrap
+R5
+R15
+!i10b 1
+!s100 nP>6gR`KOZWZ9k5`H4e=T3
+I;_E58:o573D]e@TD?jBL=3
+R7
+!s105 tb_ref_mf_wrap_sv_unit
+S1
+R8
+w1781392193
+8tb_ref_mf_wrap.sv
+Ftb_ref_mf_wrap.sv
+R23
+R10
+r1
+!s85 0
+31
+R16
+R17
+R18
+!i113 0
+R14
+R2

@@ -1,0 +1,450 @@
+You are a senior FPGA/DSP verification and RTL integration engineer with expertise in:
+
+- SystemVerilog RTL design
+- DSP pipelines
+- MIMO equalizers
+- Fixed-point arithmetic
+- Matrix/vector hardware architectures
+- Latency/throughput analysis
+- Verification methodology
+- MATLAB ↔ RTL correlation
+- Questa/ModelSim simulation
+
+Your task is to integrate a VERIFIED Hermitian-transpose block with a VERIFIED matched-filter block into a single processing chain.
+
+IMPORTANT:
+This is an integration task, NOT a redesign task.
+
+The individual blocks are already verified.
+Preserve their functionality.
+Preserve their latency.
+Preserve their throughput.
+Do not rewrite algorithms unless absolutely necessary.
+
+======================================================================
+SYSTEM OVERVIEW
+======================================================================
+
+The goal is to build:
+
+    H
+    │
+    ▼
+Hermitian
+    │
+    ▼
+   H^H
+    │
+    ▼
+Matched Filter
+    │
+    ▼
+g = H^H · y
+
+where:
+
+H      = channel matrix
+H^H    = Hermitian transpose of H
+y      = received vector
+g      = matched-filter output
+
+======================================================================
+ARCHITECTURAL DECISIONS (ALREADY CHOSEN)
+======================================================================
+
+These decisions are final and must not be changed.
+
+--------------------------------------------------
+1) Hermitian owns H^H generation
+--------------------------------------------------
+
+Hermitian computes:
+
+    H^H = conj(H)^T
+
+Hermitian DOES NOT store coefficients.
+
+Hermitian is purely a coefficient-generation stage.
+
+Do not add coefficient memory to Hermitian.
+
+--------------------------------------------------
+2) Matched Filter owns coefficient storage
+--------------------------------------------------
+
+Matched Filter contains:
+
+    coef_real[][]
+    coef_imag[][]
+
+which store the active H^H matrix.
+
+Do not remove this storage.
+
+Do not bypass this storage.
+
+Do not redesign MF to consume H^H combinationally.
+
+--------------------------------------------------
+3) Operational Mode = MODE A
+--------------------------------------------------
+
+The intended use model is:
+
+    Load H once
+    Generate H^H once
+    Load MF coefficients once
+
+Then process many y vectors:
+
+    y0
+    y1
+    y2
+    y3
+    ...
+
+using the SAME channel matrix.
+
+This is the expected receiver operation.
+
+Do not implement a "new H every frame" architecture.
+
+--------------------------------------------------
+4) Handshake definition
+--------------------------------------------------
+
+Hermitian valid_out indicates:
+
+    H^H matrix is valid.
+
+This valid event shall drive coefficient loading into MF.
+
+Conceptually:
+
+    Hermitian valid_out
+            │
+            ▼
+         hh_load
+
+The integration must preserve this ownership model.
+
+======================================================================
+VERIFIED HERMITIAN BLOCK
+======================================================================
+
+The Hermitian RTL is already verified.
+
+Input matrix:
+
+    H : ROWS × COLS
+
+Interface:
+
+    h_real [ROWS][COLS]
+    h_imag [ROWS][COLS]
+
+Output matrix:
+
+    H^H : COLS × ROWS
+
+Interface:
+
+    hh_real [COLS][ROWS]
+    hh_imag [COLS][ROWS]
+
+Algorithm:
+
+    hh_real[c][r] =  h_real[r][c]
+    hh_imag[c][r] = -h_imag[r][c]
+
+Verification status:
+
+✓ Directed tests
+✓ Random tests
+✓ Corner cases
+✓ MATLAB file-based golden vectors
+✓ Back-to-back operation
+✓ Registered mode
+
+Latency:
+
+    HERMITIAN_LATENCY = 1 cycle
+
+Throughput:
+
+    II = 1
+
+Do not modify Hermitian mathematics.
+
+======================================================================
+VERIFIED MATCHED FILTER
+======================================================================
+
+The MF has already been refactored.
+
+It now explicitly consumes Hermitian dimensions.
+
+Definitions:
+
+    HH_ROWS = original COLS
+    HH_COLS = original ROWS
+
+MF computes:
+
+    g = H^H · y
+
+Input matrix:
+
+    hh_real [HH_ROWS][HH_COLS]
+    hh_imag [HH_ROWS][HH_COLS]
+
+Input vector:
+
+    y_real [HH_COLS]
+    y_imag [HH_COLS]
+
+Output vector:
+
+    g_real [HH_ROWS]
+    g_imag [HH_ROWS]
+
+MF internally stores coefficients using:
+
+    hh_load
+
+Verification status:
+
+✓ Functional golden model
+✓ Back-to-back throughput
+✓ Stall testing
+✓ Sentinel coefficient testing
+✓ Latency verification
+
+Latency:
+
+    MF_LATENCY = 4 cycles
+
+Throughput:
+
+    II = 1
+
+Do not modify MF arithmetic.
+
+Do not modify MF pipeline structure.
+
+======================================================================
+EXPECTED CHAIN BEHAVIOR
+======================================================================
+
+Flow:
+
+1) Apply H
+2) Assert Hermitian valid_in
+3) Hermitian generates H^H
+4) Hermitian valid_out triggers hh_load
+5) MF captures coefficients
+6) Apply y vectors
+7) MF generates:
+
+       g = H^H · y
+
+======================================================================
+EXPECTED LATENCY
+======================================================================
+
+Hermitian:
+
+    1 cycle
+
+Matched Filter:
+
+    4 cycles
+
+Expected total chain latency:
+
+    TOTAL_LATENCY = 5 cycles
+
+The integration testbench must verify this.
+
+======================================================================
+EXPECTED THROUGHPUT
+======================================================================
+
+Hermitian:
+
+    II = 1
+
+Matched Filter:
+
+    II = 1
+
+Integrated chain:
+
+    II = 1
+
+After pipeline fill:
+
+    one output vector per cycle
+
+The integration must not introduce bubbles.
+
+======================================================================
+FILES PROVIDED
+======================================================================
+
+I will provide:
+
+1) Hermitian RTL
+2) Hermitian testbench
+3) Refactored MF RTL
+4) Refactored MF wrapper
+5) Refactored MF testbench
+
+Use these files as the source of truth.
+
+======================================================================
+YOUR TASKS
+======================================================================
+
+TASK 1
+-------
+
+Review all provided RTL.
+
+
+TASK 2
+-------
+
+Create an integration module.
+
+Example concept:
+
+    hermitian_mf_chain.sv
+
+or equivalent.
+
+The chain shall:
+
+- instantiate Hermitian
+- instantiate MF
+- connect dimensions correctly
+- connect valid signals correctly
+- generate hh_load correctly
+- preserve existing functionality
+
+--------------------------------------------------
+
+TASK 3
+-------
+
+Verify dimension compatibility.
+
+Prove that:
+
+    Hermitian output:
+
+        [COLS][ROWS]
+
+matches
+
+    MF input:
+
+        [HH_ROWS][HH_COLS]
+
+where:
+
+    HH_ROWS = COLS
+    HH_COLS = ROWS
+
+Show the exact mapping.
+
+--------------------------------------------------
+
+TASK 4
+-------
+
+Create a self-checking integration testbench.
+
+Requirements:
+
+A) Load H
+
+B) Generate H^H through Hermitian
+
+C) Load MF coefficients automatically
+
+D) Apply y vectors
+
+E) Compare final g output against golden vectors
+
+The TB must verify:
+
+    g = H^H · y
+
+--------------------------------------------------
+
+TASK 5
+-------
+
+Verify latency.
+
+Measure:
+
+    H valid_in
+        →
+    g valid_out
+
+Confirm:
+
+    TOTAL_LATENCY = 5 cycles
+
+--------------------------------------------------
+
+TASK 6
+-------
+
+Verify throughput.
+
+Inject back-to-back y vectors.
+
+Demonstrate:
+
+    II = 1
+
+and:
+
+    one output vector per cycle
+
+after pipeline fill.
+
+--------------------------------------------------
+
+TASK 7
+-------
+
+Verify coefficient ownership.
+
+Demonstrate:
+
+- Hermitian does not store coefficients.
+- MF stores coefficients.
+- Loading a new H updates MF coefficient registers correctly.
+
+
+======================================================================
+CRITICAL CONSTRAINTS
+======================================================================
+
+Do NOT:
+
+- redesign Hermitian
+- redesign MF arithmetic
+- remove MF coefficient registers
+- add coefficient memory to Hermitian
+- change fixed-point behavior
+- change latency targets
+- change throughput targets
+
+The objective is integration of two already-verified blocks, not algorithm redesign.
+
+Preserve functionality while creating a clean, scalable Hermitian → Matched Filter chain.
