@@ -3,7 +3,10 @@
 // Description : Parameterized Rounding Module supporting both 
 //               CONVERGENT (Banker's) and FLOOR (Truncation) modes.
 //               (Bulletproof Signed Arithmetic Version)
-// ============================================================
+// Author      : Marwan Khaled
+// Email       : khaleryad816@gmail.com
+// Date        : June 2026
+// ============================================================  
 module smart_round #(
     parameter WIDTH           = 16,
     parameter SHIFT           = 0,
