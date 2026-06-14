@@ -1,0 +1,79 @@
+{G:/Sarah/GP/Gram Matrix RTL/second trial/mac.sv} {1 {vlog -work work -vopt -sv -stats=none {G:/Sarah/GP/Gram Matrix RTL/second trial/mac.sv}
+QuestaSim-64 vlog 2021.1 Compiler 2021.01 Jan 19 2021
+-- Compiling module mac
+
+Top level modules:
+	mac
+
+} {} {}} {G:/Sarah/GP/Gram Matrix RTL/second trial/gram_matrix_top.sv} {2 {vlog -work work -vopt -sv -stats=none {G:/Sarah/GP/Gram Matrix RTL/second trial/gram_matrix_top.sv}
+QuestaSim-64 vlog 2021.1 Compiler 2021.01 Jan 19 2021
+-- Compiling module gram_matrix_top
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_matrix_top.sv(44): (vlog-13314) Defaulting port 'h_real_in' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_matrix_top.sv(45): (vlog-13314) Defaulting port 'h_imag_in' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+
+Top level modules:
+	gram_matrix_top
+
+} {} {}} {G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv} {2 {vlog -work work -vopt -sv -stats=none {G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv}
+QuestaSim-64 vlog 2021.1 Compiler 2021.01 Jan 19 2021
+-- Compiling module gram_read_ports
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv(29): (vlog-13314) Defaulting port 'hh_real_mat' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv(30): (vlog-13314) Defaulting port 'hh_imag_mat' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv(31): (vlog-13314) Defaulting port 'h_real_mat' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv(32): (vlog-13314) Defaulting port 'h_imag_mat' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv(35): (vlog-13314) Defaulting port 'hh_addr' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_read_ports.sv(36): (vlog-13314) Defaulting port 'h_addr' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+
+Top level modules:
+	gram_read_ports
+
+} {} {}} {G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv} {2 {vlog -work work -vopt -sv -stats=none {G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv}
+QuestaSim-64 vlog 2021.1 Compiler 2021.01 Jan 19 2021
+-- Compiling module gram_mem
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv(22): (vlog-13314) Defaulting port 'wr_en' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv(23): (vlog-13314) Defaulting port 'wr_addr' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv(24): (vlog-13314) Defaulting port 'g_real' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/gram_mem.sv(25): (vlog-13314) Defaulting port 'g_imag' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+
+Top level modules:
+	gram_mem
+
+} {} {}} {G:/Sarah/GP/Gram Matrix RTL/second trial/tb_gram_matrix_top.sv} {1 {vlog -work work -vopt -sv -stats=none {G:/Sarah/GP/Gram Matrix RTL/second trial/tb_gram_matrix_top.sv}
+QuestaSim-64 vlog 2021.1 Compiler 2021.01 Jan 19 2021
+-- Compiling module tb_gram_matrix_top
+
+Top level modules:
+	tb_gram_matrix_top
+
+} {} {}} {G:/Sarah/GP/Gram Matrix RTL/second trial/gram_controller.sv} {1 {vlog -work work -vopt -sv -stats=none {G:/Sarah/GP/Gram Matrix RTL/second trial/gram_controller.sv}
+QuestaSim-64 vlog 2021.1 Compiler 2021.01 Jan 19 2021
+-- Compiling module gram_controller
+
+Top level modules:
+	gram_controller
+
+} {} {}} {G:/Sarah/GP/Gram Matrix RTL/second trial/hermitian_pipe.sv} {2 {vlog -work work -vopt -sv -stats=none {G:/Sarah/GP/Gram Matrix RTL/second trial/hermitian_pipe.sv}
+QuestaSim-64 vlog 2021.1 Compiler 2021.01 Jan 19 2021
+-- Compiling module hermitian_pipeW
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/hermitian_pipe.sv(216): (vlog-13314) Defaulting port 'h_real' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/hermitian_pipe.sv(217): (vlog-13314) Defaulting port 'h_imag' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+
+Top level modules:
+	hermitian_pipeW
+
+} {} {}} {G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv} {2 {vlog -work work -vopt -sv -stats=none {G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv}
+QuestaSim-64 vlog 2021.1 Compiler 2021.01 Jan 19 2021
+-- Compiling module mac_array
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv(36): (vlog-13314) Defaulting port 'row' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv(37): (vlog-13314) Defaulting port 'col' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv(38): (vlog-13314) Defaulting port 'is_diag' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv(39): (vlog-13314) Defaulting port 'lane_valid' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv(44): (vlog-13314) Defaulting port 'hh_real' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv(45): (vlog-13314) Defaulting port 'hh_imag' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv(46): (vlog-13314) Defaulting port 'h_real' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+** Warning: G:/Sarah/GP/Gram Matrix RTL/second trial/mac_array.sv(47): (vlog-13314) Defaulting port 'h_imag' kind to 'var' rather than 'wire' due to default compile option setting of -svinputport=relaxed.
+
+Top level modules:
+	mac_array
+
+} {} {}}
