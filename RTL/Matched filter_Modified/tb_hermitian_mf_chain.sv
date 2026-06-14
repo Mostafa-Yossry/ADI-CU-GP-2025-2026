@@ -953,6 +953,305 @@ initial begin : main_proc
     $display("  hh_load is driven by hermitian_pipe.valid_out (ownership model intact).");
 
     // =======================================================================
+    // SUITE F — MATLAB FILE-BASED END-TO-END REGRESSION
+    // =======================================================================
+    //
+    // Reads externally generated MATLAB reference files:
+    //   H_all_Convergent.txt   – 128 binary lines per frame (12-bit Q1.11)
+    //   Y_all_Convergent.txt   –  16 binary lines per frame
+    //   Z_all_Convergent.txt   –  16 binary lines per frame (golden outputs)
+    //
+    // For each frame the suite:
+    //   1. Reads H, loads it into the DUT, waits for hh_load naturally.
+    //   2. Reads Y and Z reference vectors.
+    //   3. Injects Y for one valid cycle.
+    //   4. Waits for g_valid_out and compares against Z.
+    //
+    // Frame count is detected automatically as (H_lines / 128).
+    // If automatic detection is not possible (file missing / empty) the suite
+    // falls back to the parameter MATLAB_NUM_FRAMES (default 0 = skip suite).
+    // =======================================================================
+
+    $display("");
+    $display("========================================================");
+    $display("SUITE F: MATLAB FILE-BASED END-TO-END REGRESSION");
+    $display("========================================================");
+
+    begin : suite_f_block
+
+        // ------------------------------------------------------------------
+        // F.0  Local variables and file handles
+        // ------------------------------------------------------------------
+        // Fallback frame count (0 means "auto-detect failed → skip")
+        localparam int MATLAB_NUM_FRAMES = 0;
+
+        // Lines per frame in each file
+        localparam int H_LINES_PER_FRAME = ROWS * COLS * 2;   // 128 for 8×8
+        localparam int YZ_LINES_PER_FRAME = ROWS * 2;         //  16 for 8×8
+
+        integer fh_H, fh_Y, fh_Z;   // file handles
+
+        // Temporary bit-vector wide enough for a 12-bit binary string (H and Y)
+        reg [WL_IN-1:0]  tmp_bits;
+        // BUG #2 FIX: separate 16-bit register for Z reads (Z is WL_OUT=16 bits,
+        // not WL_IN=12 bits; reading into tmp_bits silently truncated the top 4 bits)
+        reg [WL_OUT-1:0] tmp_bits_out;
+
+        // Per-frame H, Y, expected-Z storage
+        integer mf_h_r   [0:ROWS-1][0:COLS-1];
+        integer mf_h_i   [0:ROWS-1][0:COLS-1];
+        integer mf_y_r   [0:ROWS-1];
+        integer mf_y_i   [0:ROWS-1];
+        integer mf_exp_r [0:COLS-1];
+        integer mf_exp_i [0:COLS-1];
+
+        // Golden HH scratch (Suite F uses the chain's own hh_load; these are
+        // only needed to confirm we have a valid frame read — not for checking)
+        integer mf_hh_r [0:COLS-1][0:ROWS-1];
+        integer mf_hh_i [0:COLS-1][0:ROWS-1];
+
+        // Suite F counters
+        integer sf_frames, sf_pass, sf_fail, sf_total_cmp;
+        integer sf_num_frames;
+        integer sf_fr, sf_r, sf_c;
+        string  sf_line;        // $fgets destination
+        integer sf_scan_ret;
+
+
+        sf_frames     = 0;
+        sf_pass       = 0;
+        sf_fail       = 0;
+        sf_total_cmp  = 0;
+        sf_num_frames = 0;
+
+        // ------------------------------------------------------------------
+        // F.1  Open files
+        // ------------------------------------------------------------------
+        fh_H = $fopen("testbench_files/H_all_Convergent.txt", "r");
+        fh_Y = $fopen("testbench_files/Y_all_Convergent.txt", "r");
+        fh_Z = $fopen("testbench_files/Z_all_Convergent.txt", "r");
+
+        if (fh_H == 0 || fh_Y == 0 || fh_Z == 0) begin
+            if (fh_H == 0)
+                $display("  SUITE F WARNING: Cannot open H_all_Convergent.txt — skipping suite.");
+            if (fh_Y == 0)
+                $display("  SUITE F WARNING: Cannot open Y_all_Convergent.txt — skipping suite.");
+            if (fh_Z == 0)
+                $display("  SUITE F WARNING: Cannot open Z_all_Convergent.txt — skipping suite.");
+            if (fh_H != 0) $fclose(fh_H);
+            if (fh_Y != 0) $fclose(fh_Y);
+            if (fh_Z != 0) $fclose(fh_Z);
+            $display("  Suite F: SKIPPED (input files not found)");
+        end else begin
+            // ------------------------------------------------------------------
+            // F.2  Single-pass frame loop.
+            //
+            // We avoid a two-pass approach (pre-scan + rewind) because
+            // $rewind is not a standard SystemVerilog PLI task and ModelSim
+            // silently ignores it, leaving the file pointer at EOF.
+            // Instead we read Y and Z in lock-step with H, stopping when
+            // H hits EOF.  $feof is checked AFTER a successful $fscanf so
+            // that a trailing newline does not trigger a false early exit.
+            // ------------------------------------------------------------------
+
+                // ------------------------------------------------------------------
+                // Clean reset before Suite F.
+                // apply_reset flushes any pipeline residue left by Suite D.
+                // ------------------------------------------------------------------
+                apply_reset(4);
+                repeat(2) @(posedge clk);
+
+                // --------------------------------------------------------------
+                // F.3  Frame loop — read until H file is exhausted.
+                //
+                // TIMING STRATEGY — why we count cycles instead of polling
+                // g_valid_out:
+                //
+                //   After y_valid_in is asserted for one posedge, g_valid_out
+                //   rises exactly MF_LAT posedges later (deterministic).
+                //   Polling g_valid_out is unsafe because Suite D may leave
+                //   the MF pipeline non-empty, causing an early false trigger.
+                //   Counting MF_LAT cycles from the sampling posedge is
+                //   race-free and independent of pipeline history.
+                // --------------------------------------------------------------
+                sf_fr = 0;
+                while (1) begin  // exit via break when H hits EOF
+
+                    // ----------------------------------------------------------
+                    // STEP 1: Read one H frame (row-major, real then imag per element).
+                    //         Break out of the while loop if H is exhausted.
+                    // ----------------------------------------------------------
+                    begin : step1_read_H
+                        integer h_eof_hit;
+                        h_eof_hit = 0;
+                        for (sf_r = 0; sf_r < ROWS && !h_eof_hit; sf_r++) begin
+                            for (sf_c = 0; sf_c < COLS && !h_eof_hit; sf_c++) begin
+                                // Real part
+                                sf_scan_ret = $fscanf(fh_H, "%b\n", tmp_bits);
+                                if (sf_scan_ret < 1) begin h_eof_hit = 1; break; end
+                                mf_h_r[sf_r][sf_c] = bits_to_sint(tmp_bits);
+                                // Imaginary part
+                                sf_scan_ret = $fscanf(fh_H, "%b\n", tmp_bits);
+                                if (sf_scan_ret < 1) begin h_eof_hit = 1; break; end
+                                mf_h_i[sf_r][sf_c] = bits_to_sint(tmp_bits);
+                            end
+                        end
+                        if (h_eof_hit) break;   // incomplete frame — stop
+                    end
+
+                    // ----------------------------------------------------------
+                    // STEP 4 (pre-read): Read one Y frame
+                    // ----------------------------------------------------------
+                    for (sf_r = 0; sf_r < ROWS; sf_r++) begin
+                        sf_scan_ret = $fscanf(fh_Y, "%b\n", tmp_bits);
+                        mf_y_r[sf_r] = bits_to_sint(tmp_bits);
+                        sf_scan_ret = $fscanf(fh_Y, "%b\n", tmp_bits);
+                        mf_y_i[sf_r] = bits_to_sint(tmp_bits);
+                    end
+
+                    // ----------------------------------------------------------
+                    // STEP 5 (pre-read): Read one Z frame (expected outputs)
+                    // BUG #2 FIX: Z values are WL_OUT=16-bit (Q5.11), not
+                    // WL_IN=12-bit.  Use tmp_bits_out to avoid silent MSB truncation.
+                    // ----------------------------------------------------------
+                    for (sf_c = 0; sf_c < COLS; sf_c++) begin
+                        sf_scan_ret = $fscanf(fh_Z, "%b\n", tmp_bits_out);
+                        mf_exp_r[sf_c] = integer'(signed'(tmp_bits_out));
+                        sf_scan_ret = $fscanf(fh_Z, "%b\n", tmp_bits_out);
+                        mf_exp_i[sf_c] = integer'(signed'(tmp_bits_out));
+                    end
+
+                    // ----------------------------------------------------------
+                    // STEP 2: Assert h_valid_in — let chain generate H^H and
+                    //         fire hh_load naturally (DO NOT force hh_load).
+                    //         Matches load_H task: drive on negedge, hold one
+                    //         cycle, deassert on next negedge.
+                    // ----------------------------------------------------------
+                    @(negedge clk);
+                    for (sf_r = 0; sf_r < ROWS; sf_r++)
+                        for (sf_c = 0; sf_c < COLS; sf_c++) begin
+                            h_real[sf_r][sf_c] = WL_IN'(mf_h_r[sf_r][sf_c]);
+                            h_imag[sf_r][sf_c] = WL_IN'(mf_h_i[sf_r][sf_c]);
+                        end
+                    h_valid_in = 1;
+                    @(negedge clk);
+                    h_valid_in = 0;
+
+                    // ----------------------------------------------------------
+                    // STEP 3: Wait until coefficient loading has completed.
+                    //         Identical to Suites B / C / D:
+                    //           poll posedge until hh_load_obs=1, then wait
+                    //           one extra settling cycle before driving Y.
+                    // ----------------------------------------------------------
+                    @(posedge clk);
+                    while (!hh_load_obs) @(posedge clk);
+                    repeat(1) @(posedge clk);   // coef settle — same as existing TB
+
+                    // ----------------------------------------------------------
+                    // STEP 6: Inject Y.
+                    //         Drive on negedge so data is stable before the
+                    //         subsequent posedge samples y_valid_in=1.
+                    //         Record that posedge as the injection reference.
+                    // ----------------------------------------------------------
+                    @(negedge clk);
+                    for (sf_r = 0; sf_r < ROWS; sf_r++) begin
+                        y_real[sf_r] = WL_IN'(mf_y_r[sf_r]);
+                        y_imag[sf_r] = WL_IN'(mf_y_i[sf_r]);
+                    end
+                    y_valid_in = 1;
+                    // Wait for the posedge that samples y_valid_in=1 (this IS
+                    // cycle 0 of the MF pipeline for this Y vector).
+                    @(posedge clk);
+                    @(negedge clk);
+                    y_valid_in = 0;
+
+                    // ----------------------------------------------------------
+                    // STEP 7: Advance exactly MF_LAT more posedges after the
+                    //         sampling posedge, then capture.
+                    //
+                    //         Timeline (posedges only):
+                    //           P0 : y_valid_in=1 sampled by DUT  (consumed above)
+                    //           P1..P4 : MF pipeline stages
+                    //           P4 : g_valid_out=1, yhat_* valid
+                    //
+                    //         Suite E confirms latency = MF_LAT = 4 cycles,
+                    //         measured as (vout_posedge - vin_posedge) = 4.
+                    //         From P0 we therefore need MF_LAT=4 further posedges.
+                    //         MF_LAT = 1 + clog2(HH_COLS) = 4 for 8x8.
+                    // ----------------------------------------------------------
+                    repeat(MF_LAT) @(posedge clk);
+
+                    // Sanity-check: g_valid_out must be high right now.
+                    if (!g_valid_out) begin
+                        $display("  SUITE F ERROR Frame=%0d: g_valid_out not asserted after %0d cycles — check MF_LAT",
+                                 sf_fr, MF_LAT);
+                        fail_total++;
+                    end
+
+                    // Compare each output element
+                    for (sf_c = 0; sf_c < COLS; sf_c++) begin
+                        integer sf_got_r, sf_got_i;
+                        sf_got_r = integer'(signed'(yhat_real[sf_c]));
+                        sf_got_i = integer'(signed'(yhat_imag[sf_c]));
+                        sf_total_cmp++;
+
+                        if (sf_got_r == mf_exp_r[sf_c] && sf_got_i == mf_exp_i[sf_c]) begin
+                            $display("  PASS Frame=%0d Out=%0d  DUT=(%0d,%0d)  EXP=(%0d,%0d)",
+                                     sf_fr, sf_c,
+                                     sf_got_r, sf_got_i,
+                                     mf_exp_r[sf_c], mf_exp_i[sf_c]);
+                            sf_pass++;
+                        end else begin
+                            $display("  FAIL Frame=%0d Out=%0d  DUT=(%0d,%0d)  EXP=(%0d,%0d)",
+                                     sf_fr, sf_c,
+                                     sf_got_r, sf_got_i,
+                                     mf_exp_r[sf_c], mf_exp_i[sf_c]);
+                            sf_fail++;
+                        end
+                    end
+
+                    sf_frames++;
+                    sf_fr = sf_fr + 1;
+
+                    // Drain the pipeline between frames: advance enough cycles
+                    // so g_valid_out returns low before the next H load.
+                    // Two idle posedges is sufficient for II=1 with no new Y.
+                    repeat(2) @(posedge clk);
+
+                end // while frame loop
+
+                // Close files
+                $fclose(fh_H);
+                $fclose(fh_Y);
+                $fclose(fh_Z);
+
+                // Propagate Suite F counts into global pass/fail totals
+                pass_total += sf_pass;
+                fail_total += sf_fail;
+
+                // ----------------------------------------------------------
+                // Suite F Summary
+                // ----------------------------------------------------------
+                $display("");
+                $display("--------------------------------------------------");
+                $display("SUITE F SUMMARY");
+                $display("--------------------------------------------------");
+                $display("  Frames processed  : %0d", sf_frames);
+                $display("  Total comparisons : %0d", sf_total_cmp);
+                $display("  PASS count        : %0d", sf_pass);
+                $display("  FAIL count        : %0d", sf_fail);
+                $display("--------------------------------------------------");
+                if (sf_fail == 0)
+                    $display("  MATLAB regression PASSED");
+                else
+                    $display("  MATLAB regression FAILED");
+                $display("--------------------------------------------------");
+
+        end // if files opened successfully
+
+    end // suite_f_block
+
+    // =======================================================================
     // Final Summary
     // =======================================================================
     repeat(10) @(posedge clk);
@@ -969,6 +1268,7 @@ initial begin : main_proc
     $display("--------------------------------------------------------");
     $display("  Total PASS: %0d", pass_total);
     $display("  Total FAIL: %0d", fail_total);
+    $display("  (Includes Suite F MATLAB regression counts above)");
     $display("--------------------------------------------------------");
     if (fail_total == 0)
         $display("  *** ALL TESTS PASSED ***");
@@ -980,7 +1280,17 @@ initial begin : main_proc
 end
 
 // =============================================================================
-// 10. Unused helper (kept for reference — not called in main flow)
+// 10. Suite F helper — must live at module scope (ModelSim rejects functions
+//     declared inside begin...end procedural blocks).
+// =============================================================================
+// bits_to_sint: reinterpret a WL_IN-wide unsigned bit-vector as a signed
+// integer, matching the Q1.11 two's-complement encoding written by MATLAB.
+function automatic integer bits_to_sint(input reg [WL_IN-1:0] b);
+    return integer'(signed'(b));
+endfunction
+
+// =============================================================================
+// 11. Unused helper (kept for reference — not called in main flow)
 // =============================================================================
 // golden_mf_ref_r: placeholder used by Suite A's initial attempt.
 // The actual check uses the full golden_mf task above.

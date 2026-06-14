@@ -225,3 +225,86 @@ end
 if (mode == "All")
     PLOT('SQNR_All', number_of_tests, SQNR_All);
 end
+%% =========================================================
+%  BINARY TESTBENCH FILE GENERATION
+%  All seeds concatenated into one file per matrix
+%  H  : row-major, real(H_ij) then imag(H_ij), row by row
+%  Y  : column-major, real(Yi) then imag(Yi)
+%  Z  : column-major, real(Zi) then imag(Zi)
+%  Format : binary string (2's complement bits) per line
+%  H  : Q1.11 (12-bit) 
+%  Y  : Q1.11 (12-bit)
+%  Z  : fixed-point output of systolic_matmul_8_8__8_1
+%% =========================================================
+if (mode == "Z" || mode == "All")
+    output_dir = 'testbench_files';
+    if ~exist(output_dir, 'dir'), mkdir(output_dir); end
+    
+    % Critical Requirement: One RNG seed before the loop
+    rng(42); 
+    
+    % Open files with the "_Convergent" suffix
+    fid_H = fopen(fullfile(output_dir, 'H_all_Convergent.txt'), 'w');
+    fid_Y = fopen(fullfile(output_dir, 'Y_all_Convergent.txt'), 'w');
+    fid_Z = fopen(fullfile(output_dir, 'Z_all_Convergent.txt'), 'w');
+    
+    % Critical Requirement: Single loop for all generations and writes
+    for n = 1 : number_of_tests
+        
+        %% -- Generate continuous H and Y for this iteration --
+        H_real_s = (b-a)*rand(Nr, Nt) + a;
+        H_imag_s = (b-a)*rand(Nr, Nt) + a;
+        H_s      = cast(H_real_s + 1j*H_imag_s, 'like', T_G.H);
+        HH_s     = H_s';
+        
+        Y_real_s = (b-a)*rand(Nr, 1) + a;
+        Y_imag_s = (b-a)*rand(Nr, 1) + a;
+        Y_s      = cast(Y_real_s + 1j*Y_imag_s, 'like', T_Z.Q6_);
+        
+        %% -- Compute Z --
+        Z_s      = systolic_matmul_8_8__8_1(HH_s, Y_s, T_Z);
+        
+        % Debug output for the first frame
+        if n == 1
+            fprintf('\n===== MATLAB TEST 1 (Seed 42) =====\n');
+            disp('H(1,1)');
+            disp(H_s(1,1));
+            disp('Y(1)');
+            disp(Y_s(1));
+            disp('Z_s');
+            disp(Z_s);
+            disp('real(Z_s)');
+            disp(real(Z_s));
+            disp('imag(Z_s)');
+            disp(imag(Z_s));
+        end
+        
+        %% -- H: row-major, real then imag per element (128 lines, 12-bit binary) --
+        for r = 1 : Nr
+            for c = 1 : Nt
+                fprintf(fid_H, '%s\n', bin(fi(real(H_s(r,c)), 1, 12, 11)));
+                fprintf(fid_H, '%s\n', bin(fi(imag(H_s(r,c)), 1, 12, 11)));
+            end
+        end
+        
+        %% -- Y: real then imag per element (16 lines, 12-bit binary) --
+        for k = 1 : Nr
+            fprintf(fid_Y, '%s\n', bin(fi(real(Y_s(k)), 1, 12, 11)));
+            fprintf(fid_Y, '%s\n', bin(fi(imag(Y_s(k)), 1, 12, 11)));
+        end
+        
+        %% -- Z: real then imag per element (16 lines, e.g., 16-bit Q5.11 binary) --
+        for k = 1 : Nr
+            % Z_s is already a fixed-point object from the mex/function, format is preserved
+            fprintf(fid_Z, '%s\n', bin(real(Z_s(k))));
+            fprintf(fid_Z, '%s\n', bin(imag(Z_s(k))));
+        end
+        
+    end
+    
+    % Close all files
+    fclose(fid_H);
+    fclose(fid_Y);
+    fclose(fid_Z);
+    fprintf('\nDone. 100 frames written to Convergent files in ./%s/\n', output_dir);
+end
