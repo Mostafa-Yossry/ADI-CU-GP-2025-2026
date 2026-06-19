@@ -69,24 +69,6 @@
 //  that coefficients be held while valid_in is asserted (the MF reads
 //  coefficients only at the multiply stage, one cycle per row-group, so
 //  holding them for the full burst is the safe and correct approach).
-//
-// ============================================================
-// Control Sequencing
-// ============================================================
-//
-//  1. Assert h_valid with a new H matrix.
-//  2. One cycle later hermitian valid_out fires; wrapper auto-asserts
-//     hh_load for that one cycle and latches the coefficient hold regs.
-//  3. The very next cycle the MF coef registers are updated.
-//  4. Begin streaming y vectors (assert y_valid) from that cycle.
-//  5. After 10 cycles the first gy_valid / gy_enable asserts.
-//
-//  Coefficient re-loading: deassert h_valid until the current y burst
-//  finishes (or at minimum until all in-flight y vectors have passed
-//  the MF multiply stage — cycle 1 of the MF pipeline).  The wrapper
-//  does NOT enforce this; it is the integrating controller's responsibility.
-//
-// ============================================================
 
 module hermitian_mf_chain #(
 
@@ -154,10 +136,9 @@ module hermitian_mf_chain #(
     // -------------------------------------------------------
     // g_y = H^H y output
     // -------------------------------------------------------
-    output logic                              gy_valid,
-    output logic                              gy_enable,
-    output logic signed [N*MF_WL_OUT-1:0]     gy_re_flat,
-    output logic signed [N*MF_WL_OUT-1:0]     gy_im_flat
+    output logic                              x_valid,
+    output logic signed [N*MF_WL_OUT-1:0]     x_re_flat,
+    output logic signed [N*MF_WL_OUT-1:0]     x_im_flat
 );
 
 // ================================================================
@@ -287,10 +268,9 @@ matched_filter_pipe_wrap #(
     .y_valid    ( y_valid        ),
     .y_re_flat  ( y_re_flat      ),
     .y_im_flat  ( y_im_flat      ),
-    .valid_out  ( gy_valid       ),
-    .gy_enable  ( gy_enable      ),
-    .x_re_flat  ( gy_re_flat     ),
-    .x_im_flat  ( gy_im_flat     )
+    .valid_out  ( x_valid       ),
+    .x_re_flat  ( x_re_flat     ),
+    .x_im_flat  ( x_im_flat     )
 );
 
 endmodule

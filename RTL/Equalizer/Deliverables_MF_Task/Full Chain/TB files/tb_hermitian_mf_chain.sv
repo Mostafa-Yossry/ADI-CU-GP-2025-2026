@@ -70,10 +70,9 @@ logic signed [WL_IN-1:0]        h_imag_arr [0:N-1][0:N-1];
 logic                           y_valid;
 logic signed [N*WL_IN-1:0]     y_re_flat;
 logic signed [N*WL_IN-1:0]     y_im_flat;
-logic                           gy_valid;
-logic                           gy_enable;
-logic signed [N*MF_WL_OUT-1:0] gy_re_flat;
-logic signed [N*MF_WL_OUT-1:0] gy_im_flat;
+logic                           x_valid;
+logic signed [N*MF_WL_OUT-1:0] x_re_flat;
+logic signed [N*MF_WL_OUT-1:0] x_im_flat;
 
 // ---------------------------------------------------------------------------
 // DUT instantiation
@@ -104,10 +103,9 @@ hermitian_mf_chain #(
     .y_valid    ( y_valid    ),
     .y_re_flat  ( y_re_flat  ),
     .y_im_flat  ( y_im_flat  ),
-    .gy_valid   ( gy_valid   ),
-    .gy_enable  ( gy_enable  ),
-    .gy_re_flat ( gy_re_flat ),
-    .gy_im_flat ( gy_im_flat )
+    .x_valid   ( x_valid   ),
+    .x_re_flat ( x_re_flat ),
+    .x_im_flat ( x_im_flat )
 );
 
 // ---------------------------------------------------------------------------
@@ -185,7 +183,7 @@ task automatic drive_y_flat(
     y_valid = 1'b0;
 endtask
 
-// Wait for one gy_valid; capture output and cycle
+// Wait for one x_valid; capture output and cycle
 task automatic collect_one(
     output gy_vec_t got,
     output int      err,
@@ -197,16 +195,16 @@ task automatic collect_one(
     forever begin
         @(posedge clk);
         t++;
-        if (gy_valid) begin
+        if (x_valid) begin
             out_cyc = global_cycle - 1; 
             for (int k = 0; k < N; k++) begin
-                got[k][0] = signed'(gy_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
-                got[k][1] = signed'(gy_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
+                got[k][0] = signed'(x_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
+                got[k][1] = signed'(x_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
             end
             return;
         end
         if (t >= timeout) begin
-            $display("    TIMEOUT: no gy_valid after %0d cycles", timeout);
+            $display("    TIMEOUT: no x_valid after %0d cycles", timeout);
             err = 1;
             return;
         end
@@ -264,7 +262,7 @@ initial begin : main_proc
         $display("    [Cyc %6d] herm_valid computed", cyc_h + HERM_LAT);
         $display("    [Cyc %6d] hh_load triggered", cyc_h + HERM_LAT + 1);
         $display("    [Cyc %6d] y_valid asserted", cyc_y);
-        $display("    [Cyc %6d] gy_valid captured", cyc_gy);
+        $display("    [Cyc %6d] x_valid captured", cyc_gy);
         $display("    ----------------------");
 
         if (s0_err) begin
@@ -427,9 +425,9 @@ initial begin : main_proc
                         @(posedge clk);
                         while (s2_vec_out < NUM_FRAMES) begin
                             @(posedge clk);
-                            if (gy_valid) begin
+                            if (x_valid) begin
                                 if (s2_sb.size() == 0) begin
-                                    $display("    FAIL: spurious gy_valid");
+                                    $display("    FAIL: spurious x_valid");
                                     s2_err_cnt++;
                                 end else begin
                                     s2_exp_item = s2_sb.pop_front();
@@ -442,8 +440,8 @@ initial begin : main_proc
 
                                     // First pass to check for errors
                                     for (int k = 0; k < N; k++) begin
-                                        s2_gr = signed'(gy_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
-                                        s2_gi = signed'(gy_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
+                                        s2_gr = signed'(x_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
+                                        s2_gi = signed'(x_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
                                         if (s2_gr !== s2_exp_item.exp[k][0] || s2_gi !== s2_exp_item.exp[k][1]) begin
                                             s2_mm++;
                                         end
@@ -458,8 +456,8 @@ initial begin : main_proc
                                     $display("    ------------------------------------------------------------------------------");
                                     
                                     for (int k = 0; k < N; k++) begin
-                                        s2_gr = signed'(gy_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
-                                        s2_gi = signed'(gy_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
+                                        s2_gr = signed'(x_re_flat[k*MF_WL_OUT +: MF_WL_OUT]);
+                                        s2_gi = signed'(x_im_flat[k*MF_WL_OUT +: MF_WL_OUT]);
                                         
                                         gld_r = s2_exp_item.exp[k][0];
                                         gld_i = s2_exp_item.exp[k][1];
