@@ -1,0 +1,125 @@
+m255
+K4
+z2
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dD:/A Graduation Project/Equalizer/Deliverables_MF_Task/Full Chain
+T_opt
+!s110 1781843701
+V;TIBdBb21Ch_Y=EzQNKC33
+04 26 4 work tb_matched_filter_unrolled fast 0
+=1-841b77d6ef2f-6a34c6f5-3e-2d00
+Z1 o-quiet -auto_acc_if_foreign -work work +acc
+Z2 tCvgOpt 0
+n@_opt
+Z3 OL;O;10.7c;67
+R0
+T_opt1
+!s110 1781844339
+VP=mF@J=f]@XMG[naXMS7I1
+04 27 4 work tb_matched_filter_pipe_wrap fast 0
+=1-841b77d6ef2f-6a34c973-383-1be4
+R1
+R2
+n@_opt1
+R3
+vmatched_filter_pipe_wrap
+Z4 DXx6 sv_std 3 std 0 22 d=_JfHTnXCN[H5FjiaJJc0
+Z5 !s110 1781844338
+!i10b 1
+!s100 dWCUSGJje5F36fbIf?9;n0
+I]^Kfz<B97YU5dQfU:LFGD2
+Z6 VDg1SIo80bB@j0V0VzS_@n1
+!s105 MF_Wrap_sv_unit
+S1
+Z7 dD:/A Graduation Project/Equalizer/Comb MF
+w1781843877
+8MF_Wrap.sv
+FMF_Wrap.sv
+L0 51
+Z8 OL;L;10.7c;67
+r1
+!s85 0
+31
+Z9 !s108 1781844338.000000
+Z10 !s107 tb_mf_wrap.sv|tb_matched_filter.sv|matched_filter_unrolled.sv|MF_Wrap.sv|
+Z11 !s90 -reportprogress|300|MF_Wrap.sv|matched_filter_unrolled.sv|tb_matched_filter.sv|tb_mf_wrap.sv|
+!i113 0
+Z12 o-L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+R2
+vmatched_filter_unrolled
+R4
+R5
+!i10b 1
+!s100 DEh4g6J^G4_:P>iH]93o]2
+I290ZYigm:4j[?TzRWN;?@1
+R6
+!s105 matched_filter_unrolled_sv_unit
+S1
+R7
+w1781843599
+8matched_filter_unrolled.sv
+Fmatched_filter_unrolled.sv
+L0 1
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_matched_filter_pipe_wrap
+R4
+R5
+!i10b 1
+!s100 oU>XYo@6:CeBg2`0m8iHo0
+IF>g9PE_^:bHebOHYedLzH0
+R6
+!s105 tb_mf_wrap_sv_unit
+S1
+R7
+w1781844328
+8tb_mf_wrap.sv
+Ftb_mf_wrap.sv
+L0 15
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
+vtb_matched_filter_unrolled
+R4
+R5
+!i10b 1
+!s100 bLOJJ=QYXcU;l_WC:_K;C2
+I::>NSb;H2460hGYOP;eVN1
+R6
+!s105 tb_matched_filter_sv_unit
+S1
+R7
+w1781843693
+8tb_matched_filter.sv
+Ftb_matched_filter.sv
+L0 3
+R8
+r1
+!s85 0
+31
+R9
+R10
+R11
+!i113 0
+R12
+R2
