@@ -1,0 +1,51 @@
+<mxGraphModel dx="1200" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <mxCell id="node_Input" value="Input Samples&lt;br&gt;&lt;span style=&#34;font-weight:normal;font-size:12px;&#34;&gt;x[n]&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="40" y="140" width="140" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="node_Stage1" value="FFT Stage 1&lt;br&gt;&lt;span style=&#34;font-weight:normal;font-size:12px;&#34;&gt;(Butterflies)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="240" y="140" width="140" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="node_Stage2" value="FFT Stage 2&lt;br&gt;&lt;span style=&#34;font-weight:normal;font-size:12px;&#34;&gt;(Butterflies)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="440" y="140" width="140" height="60" as="geometry" />
+    </mxCell>
+    
+    <mxCell id="node_Dots" value=". . ." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=24;" vertex="1" parent="1">
+      <mxGeometry x="610" y="150" width="80" height="40" as="geometry" />
+    </mxCell>
+
+    <mxCell id="node_StageS" value="FFT Stage S&lt;br&gt;&lt;span style=&#34;font-weight:normal;font-size:12px;&#34;&gt;(Butterflies)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="720" y="140" width="140" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="node_Output" value="Frequency-Domain Output&lt;br&gt;&lt;span style=&#34;font-weight:normal;font-size:12px;&#34;&gt;X[k]&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="920" y="140" width="180" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_Input_Stage1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;entryX=0;entryY=0.5;exitX=1;exitY=0.5;strokeWidth=2;strokeColor=#000000;startArrow=none;endArrow=classic;" edge="1" parent="1" source="node_Input" target="node_Stage1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_Stage1_Stage2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;entryX=0;entryY=0.5;exitX=1;exitY=0.5;strokeWidth=2;strokeColor=#000000;startArrow=none;endArrow=classic;" edge="1" parent="1" source="node_Stage1" target="node_Stage2">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_Stage2_Dots" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;entryX=0;entryY=0.5;exitX=1;exitY=0.5;strokeWidth=2;strokeColor=#000000;startArrow=none;endArrow=none;" edge="1" parent="1" source="node_Stage2" target="node_Dots">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_Dots_StageS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;entryX=0;entryY=0.5;exitX=1;exitY=0.5;strokeWidth=2;strokeColor=#000000;startArrow=none;endArrow=classic;" edge="1" parent="1" source="node_Dots" target="node_StageS">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_StageS_Output" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;entryX=0;entryY=0.5;exitX=1;exitY=0.5;strokeWidth=2;strokeColor=#000000;startArrow=none;endArrow=classic;" edge="1" parent="1" source="node_StageS" target="node_Output">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
