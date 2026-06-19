@@ -58,10 +58,10 @@
 //         during cycle 1→2 posedge).  y vectors may be streamed from
 //         this cycle onward.
 //    2    First y_valid presented.
-//   12    First g_y valid_out from MF (MF pipeline latency = 10 cycles).
+//   13    First g_y valid_out from MF (MF pipeline latency = 10 cycles).
 //
 //  Total chain latency from H valid to g_y valid:
-//    1 (hermitian) + 1 (coef load posedge) + 10 (MF) = 12 cycles
+//    1 (hermitian) + 1 (coef load posedge) + 10 (MF) + 1 = 13 cycles
 //
 //  Note: hh_load is asserted for exactly ONE cycle coinciding with the
 //  hermitian valid_out.  The coef hold registers ensure the flat buses
