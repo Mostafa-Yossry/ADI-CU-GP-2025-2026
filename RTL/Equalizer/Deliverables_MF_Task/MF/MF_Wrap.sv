@@ -120,7 +120,6 @@ module matched_filter_pipe_wrap #(
     // Packing: flat[k*MF_WL_OUT +: MF_WL_OUT] = z[k]
     // ---------------------------------------------------------------
     output wire                              valid_out  ,
-    output wire                              gy_enable  ,
     output wire signed [N*MF_WL_OUT-1:0]    x_re_flat  ,
     output wire signed [N*MF_WL_OUT-1:0]    x_im_flat
 
@@ -208,7 +207,6 @@ matched_filter_unrolled #(
     .y_real     ( y_real_arr  ),
     .y_imag     ( y_imag_arr  ),
     .valid_out  ( valid_out   ),
-    .gy_enable  ( gy_enable   ),
     .z_real     ( z_real_arr  ),
     .z_imag     ( z_imag_arr  )
 );

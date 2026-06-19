@@ -73,7 +73,6 @@ logic                          y_valid;
 logic signed [N*WL_IN-1:0]    y_re_flat;
 logic signed [N*WL_IN-1:0]    y_im_flat;
 logic                          valid_out;
-logic                          gy_enable;
 logic signed [N*WL_OUT-1:0]   x_re_flat;
 logic signed [N*WL_OUT-1:0]   x_im_flat;
 
@@ -105,7 +104,6 @@ matched_filter_pipe_wrap #(
     .y_re_flat  ( y_re_flat  ),
     .y_im_flat  ( y_im_flat  ),
     .valid_out  ( valid_out  ),
-    .gy_enable  ( gy_enable  ),
     .x_re_flat  ( x_re_flat  ),
     .x_im_flat  ( x_im_flat  )
 );
@@ -274,15 +272,6 @@ initial begin : main_proc
                     @(posedge clk);
                     cyc++;
                     if (valid_out) begin
-                        if (!gy_checked) begin
-                            first_out_cyc = cyc;
-                            if (!gy_enable) begin
-                                $display("    FAIL: gy_enable not high on first valid_out (cycle %0d)", cyc);
-                                err_cnt++;
-                            end else
-                                $display("    gy_enable asserted correctly at cycle %0d", cyc);
-                            gy_checked = 1;
-                        end
                         if (sb_queue.size() == 0) begin
                             $display("    FAIL: spurious valid_out at cycle %0d", cyc);
                             err_cnt++;

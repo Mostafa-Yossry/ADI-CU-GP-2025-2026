@@ -37,7 +37,6 @@ module tb_matched_filter_unrolled;
   logic signed [MF_WL_IN-1:0] y_imag [0:MF_COLS-1];
 
   logic valid_out;
-  logic gy_enable;
   logic signed [MF_WL_OUT-1:0] z_real [0:MF_ROWS-1];
   logic signed [MF_WL_OUT-1:0] z_imag [0:MF_ROWS-1];
 
@@ -74,7 +73,6 @@ module tb_matched_filter_unrolled;
                             .y_real(y_real),
                             .y_imag(y_imag),
                             .valid_out(valid_out),
-                            .gy_enable(gy_enable),
                             .z_real(z_real),
                             .z_imag(z_imag)
                           );
@@ -241,18 +239,6 @@ module tb_matched_filter_unrolled;
             $display("tb: First valid_out received at cycle %0d (Latency OK)", clk_cnt);
           end
           initial_latency_met = 1;
-        end
-
-        // Check gy_enable sticky flag
-        if (!gy_enable)
-        begin
-          $error("tb: gy_enable not high when valid_out is high!");
-          error_count++;
-        end
-        else if (!gy_asserted_correctly)
-        begin
-          $display("tb: gy_enable asserted correctly on first output.");
-          gy_asserted_correctly = 1;
         end
 
         // Get expected data from queue

@@ -44,7 +44,6 @@ module matched_filter_unrolled #(
 
     // Z Vector Output
     output logic                                     valid_out,
-    output logic                                     gy_enable,
     output logic signed [MF_WL_OUT-1:0]              z_real   [0:MF_ROWS-1],
     output logic signed [MF_WL_OUT-1:0]              z_imag   [0:MF_ROWS-1]
 );
@@ -430,17 +429,8 @@ module matched_filter_unrolled #(
         end
     end
 
-// ================================================================
-// Part 8: gy_enable sticky flag
-// ================================================================
-    logic gy_enable_r;
-    always_ff @(posedge clk or negedge rst_n) begin : p_gy
-        if (!rst_n)               gy_enable_r <= 1'b0;
-        else if (valid_out_r)     gy_enable_r <= 1'b1;  // use _r directly, not the assign alias
-    end
 
     assign valid_out = valid_out_r;
-    assign gy_enable = gy_enable_r | valid_out_r;  // assert on same cycle as first valid_out
 
 // ================================================================
 // Output assignments
