@@ -1,0 +1,452 @@
+Copy the following prompt exactly into the new chat and give it to whoever will continue writing Chapter 9.
+
+---
+
+# SESSION HANDOFF – CHAPTER 9 (HW/SW CO-DESIGN)
+
+You are continuing the writing of a master's/bachelor's engineering thesis.
+
+The chapter already exists and must maintain the exact same writing style, structure, tone, and level of technical depth as the existing chapter.
+
+Before writing any new section, study the existing chapter carefully and mimic its style exactly. The final document must read as if written by a single author from beginning to end.
+
+Current chapter: **Chapter 9 – Hardware/Software Co-Design**. 
+
+---
+
+# OVERALL WRITING PHILOSOPHY
+
+This chapter is **not a research paper**.
+
+This chapter is **not a literature survey**.
+
+This chapter is **not a product manual**.
+
+This chapter is an engineering thesis chapter documenting the design decisions, integration process, architectural exploration, and performance evaluation performed during the project.
+
+The writing style must be:
+
+* Formal academic English
+* Engineering-focused
+* Objective and neutral
+* Explanatory rather than promotional
+* Clear and easy to read
+* Technical but not unnecessarily mathematical
+* Consistent with the rest of the thesis
+
+Avoid sounding like ChatGPT, a research paper, or marketing material.
+
+---
+
+# CRITICAL STYLE RULES
+
+## Rule 1: Short Paragraphs
+
+Paragraphs must remain short.
+
+Target:
+
+* 3–6 lines
+* rarely more than 8 lines
+
+Avoid massive walls of text.
+
+The existing chapter intentionally uses many small paragraphs.
+
+---
+
+## Rule 2: One Idea Per Paragraph
+
+Each paragraph should discuss a single concept.
+
+Bad:
+
+* computation
+* architecture
+* memory
+* software
+
+all mixed together.
+
+Good:
+
+Paragraph 1 → concept A
+
+Paragraph 2 → concept B
+
+Paragraph 3 → concept C
+
+---
+
+## Rule 3: Build a Story
+
+Every section should naturally lead to the next.
+
+Pattern:
+
+1. Introduce problem
+2. Explain why it matters
+3. Explain design choice
+4. Explain implementation
+5. Explain consequences
+
+Do not jump abruptly between topics.
+
+---
+
+## Rule 4: Explain Before Showing
+
+Never place a figure or table first.
+
+Always:
+
+1. Explain concept
+2. Introduce figure/table
+3. Present figure/table
+4. Discuss observations
+
+---
+
+## Rule 5: Avoid Empty Academic Filler
+
+Do NOT write:
+
+* It is worth mentioning that...
+* It should be noted that...
+* Needless to say...
+* As can clearly be seen...
+* It is important to emphasize...
+* In today's modern systems...
+
+These phrases weaken the text.
+
+---
+
+## Rule 6: Avoid AI-Sounding Transitions
+
+Avoid:
+
+* As discussed previously...
+* As mentioned earlier...
+* It is evident that...
+* Clearly...
+* Obviously...
+* It can be observed that...
+
+Use direct engineering language instead.
+
+---
+
+# TECHNICAL WRITING STYLE
+
+The chapter uses:
+
+### Pattern
+
+Concept → Explanation → Impact
+
+Example:
+
+"The AXI interface receives transactions from the processor and converts them into internal register accesses. These accesses may correspond to writing operands, configuring execution parameters, or reading results. This organization isolates protocol complexity from the computational core."
+
+This style must be preserved.
+
+---
+
+# CHAPTER REFERENCING STYLE
+
+Always reference thesis chapters using:
+
+> "PULP Platform"
+
+> "Multi Cluster PULP"
+
+> "Firmware"
+
+> "MIMO in Mobile Communication Systems"
+
+> "Hardware II: HWPE"
+
+> "Hardware III: System Pipeline"
+
+> "System Performance Analysis"
+
+Use quotation marks exactly as shown.
+
+Do not use:
+
+* Section X.X
+* Previous chapter
+* Next chapter
+
+unless absolutely necessary.
+
+---
+
+# FIGURES
+
+Every figure must follow this pattern:
+
+1. Explain concept
+2. Insert figure
+3. Discuss figure
+
+Example:
+
+"The communication path between software and hardware is shown in Figure X."
+
+Figure
+
+"The figure illustrates..."
+
+Never drop figures without explanation.
+
+---
+
+# TABLES
+
+Every table must:
+
+1. Be introduced before insertion
+2. Have a discussion after insertion
+
+Pattern:
+
+"The primary contributors are summarized in Table X."
+
+Table
+
+"As shown in Table X..."
+
+Never leave a table unexplained.
+
+---
+
+# EQUATIONS
+
+Equations should be used only when necessary.
+
+After every equation:
+
+Use:
+
+where:
+
+• variable 1 = ...
+
+• variable 2 = ...
+
+• variable 3 = ...
+
+Keep definitions simple.
+
+Do not introduce equations without explanation.
+
+---
+
+# TERMINOLOGY RULES
+
+Use consistently:
+
+Hardware accelerator
+
+Butterfly accelerator
+
+FFT accelerator
+
+PULP platform
+
+AXI interconnect
+
+AXI crossbar
+
+TCDM interconnect
+
+Memory-mapped peripheral
+
+Shared-memory participant
+
+Communication overhead
+
+Computation latency
+
+System-level performance
+
+Avoid switching terminology unnecessarily.
+
+---
+
+# DESIGN PHILOSOPHY OF THIS CHAPTER
+
+The chapter is centered around one recurring idea:
+
+> Hardware acceleration is useful only when computational improvement exceeds communication overhead.
+
+This theme appears repeatedly.
+
+Whenever discussing:
+
+* AXI integration
+* TCDM integration
+* wrappers
+* software control
+* performance
+
+always connect the discussion back to:
+
+computation vs communication tradeoff.
+
+---
+
+# LEVEL OF TECHNICAL DETAIL
+
+Provide:
+
+* architectural explanation
+* integration explanation
+* communication flow
+* design rationale
+
+Avoid:
+
+* RTL signal-by-signal descriptions
+* implementation code
+* unnecessary low-level details
+
+The chapter is architectural, not RTL documentation.
+
+---
+
+# WRITING ABOUT ARCHITECTURES
+
+When introducing a new architecture:
+
+Use:
+
+### Motivation
+
+Why was it needed?
+
+### Architecture Overview
+
+High-level organization
+
+### Communication Flow
+
+How data moves
+
+### Integration
+
+How it connects to PULP
+
+### Advantages / Limitations
+
+Engineering discussion
+
+### Summary
+
+Transition to next section
+
+---
+
+# WRITING ABOUT PERFORMANCE
+
+Never write:
+
+"The proposed solution significantly improves performance."
+
+Instead write:
+
+"The performance impact is evaluated in the following sections."
+
+or
+
+"The effectiveness of the approach depends on the balance between computation and communication latency."
+
+Remain objective.
+
+---
+
+# LANGUAGE TO AVOID
+
+Do NOT use:
+
+* revolutionary
+* innovative
+* cutting-edge
+* state-of-the-art
+* highly efficient
+* outstanding
+* remarkable
+
+Use engineering language instead.
+
+---
+
+# THESIS CONSISTENCY REQUIREMENTS
+
+The chapter currently contains:
+
+* Introduction
+* Objectives
+* Contributions
+* FFT computational analysis
+* Butterfly bottleneck analysis
+* Radix-2 architecture
+* Radix-4 architecture
+* Radix-8 architecture
+* Radix comparison
+* AXI integration
+* Wrapper architecture
+* Register communication
+* SoC integration
+* Address mapping
+* TCDM integration
+* Protocol translation
+* TCDM routing
+
+Any new sections must continue seamlessly from this structure.
+
+The reader should feel that the same person wrote every page.
+
+---
+
+# COMMON ISSUES TO CHECK BEFORE FINALIZING
+
+Verify:
+
+✓ No long paragraphs
+
+✓ No duplicated explanations
+
+✓ Every figure introduced and discussed
+
+✓ Every table introduced and discussed
+
+✓ Consistent chapter references
+
+✓ Consistent terminology
+
+✓ No AI-style filler phrases
+
+✓ No marketing language
+
+✓ Computation vs communication theme preserved
+
+✓ Smooth transitions between sections
+
+✓ Academic thesis tone maintained
+
+---
+
+# FINAL OUTPUT REQUIREMENT
+
+When writing new sections:
+
+* Match the exact tone of the existing Chapter 9.
+* Maintain the same paragraph length.
+* Maintain the same level of technical depth.
+* Maintain the same chapter-reference style.
+* Maintain the same figure/table discussion style.
+* Maintain the same computation-versus-communication narrative.
+* Write as if the entire chapter was authored by a single engineer.

@@ -1,0 +1,137 @@
+<mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="800" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <mxCell id="head_App" value="Processor&lt;br&gt;(User Application)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="80" y="40" width="160" height="60" as="geometry" />
+    </mxCell>
+    
+    <mxCell id="head_Driver" value="Software Driver&lt;br&gt;(Abstraction Layer)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="340" y="40" width="160" height="60" as="geometry" />
+    </mxCell>
+    
+    <mxCell id="head_HW" value="FFT Accelerator&lt;br&gt;(Hardware Domain)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="600" y="40" width="160" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="line_App" style="edgeStyle=none;rounded=0;html=1;entryX=0.5;entryY=0;exitX=0.5;exitY=1;strokeWidth=1;strokeColor=#000000;dashed=1;endArrow=none;" edge="1" parent="1" source="head_App">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="160" y="700" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="line_Driver" style="edgeStyle=none;rounded=0;html=1;entryX=0.5;entryY=0;exitX=0.5;exitY=1;strokeWidth=1;strokeColor=#000000;dashed=1;endArrow=none;" edge="1" parent="1" source="head_Driver">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="420" y="700" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="line_HW" style="edgeStyle=none;rounded=0;html=1;entryX=0.5;entryY=0;exitX=0.5;exitY=1;strokeWidth=2;strokeColor=#000000;dashed=1;endArrow=none;" edge="1" parent="1" source="head_HW">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="680" y="700" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+
+    <mxCell id="msg_1" value="1. Configure &amp;amp; Send Operands" style="edgeStyle=none;html=1;strokeWidth=2;strokeColor=#000000;endArrow=classic;fontSize=12;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="160" y="140" as="sourcePoint" />
+        <mxPoint x="420" y="140" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="msg_2" value="2. MMIO Write (Config &amp;amp; Data Regs)" style="edgeStyle=none;html=1;strokeWidth=2;strokeColor=#000000;endArrow=classic;fontSize=12;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="420" y="180" as="sourcePoint" />
+        <mxPoint x="680" y="180" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+
+    <mxCell id="msg_3" value="3. Initiate Execution" style="edgeStyle=none;html=1;strokeWidth=2;strokeColor=#000000;endArrow=classic;fontSize=12;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="160" y="250" as="sourcePoint" />
+        <mxPoint x="420" y="250" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="msg_4" value="4. MMIO Write (Trigger Bit)" style="edgeStyle=none;html=1;strokeWidth=2;strokeColor=#000000;endArrow=classic;fontSize=12;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="420" y="290" as="sourcePoint" />
+        <mxPoint x="680" y="290" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+
+    <mxCell id="box_Compute" value="Independent&lt;br&gt;Butterfly&lt;br&gt;Computation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#000000;fontStyle=1;fontSize=12;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="640" y="320" width="80" height="120" as="geometry" />
+    </mxCell>
+
+    <mxCell id="msg_6a" value="5. Poll Status Reg" style="edgeStyle=none;html=1;strokeWidth=1;strokeColor=#000000;endArrow=classic;fontSize=12;dashed=1;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="420" y="340" as="sourcePoint" />
+        <mxPoint x="640" y="340" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="msg_6b" value="Status = PENDING" style="edgeStyle=none;html=1;strokeWidth=1;strokeColor=#000000;endArrow=classic;fontSize=12;dashed=1;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="640" y="370" as="sourcePoint" />
+        <mxPoint x="420" y="370" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="msg_6c" value="6. Poll Status Reg" style="edgeStyle=none;html=1;strokeWidth=1;strokeColor=#000000;endArrow=classic;fontSize=12;dashed=1;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="420" y="420" as="sourcePoint" />
+        <mxPoint x="640" y="420" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="msg_6d" value="Status = IDLE (Done)" style="edgeStyle=none;html=1;strokeWidth=1;strokeColor=#000000;endArrow=classic;fontSize=12;dashed=1;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="640" y="450" as="sourcePoint" />
+        <mxPoint x="420" y="450" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+
+    <mxCell id="msg_7" value="7. MMIO Read (Result Regs)" style="edgeStyle=none;html=1;strokeWidth=2;strokeColor=#000000;endArrow=classic;fontSize=12;" edge="1" parent="1">
+      <mxGeometry x="0" y="10" relative="1" as="geometry">
+        <mxPoint x="420" y="520" as="sourcePoint" />
+        <mxPoint x="680" y="520" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="msg_8" value="8. Return Computed Data" style="edgeStyle=none;html=1;strokeWidth=2;strokeColor=#000000;endArrow=classic;fontSize=12;dashed=1;" edge="1" parent="1">
+      <mxGeometry x="0" y="-10" relative="1" as="geometry">
+        <mxPoint x="680" y="560" as="sourcePoint" />
+        <mxPoint x="420" y="560" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+
+    <mxCell id="msg_9" value="9. Return Final Results" style="edgeStyle=none;html=1;strokeWidth=2;strokeColor=#000000;endArrow=classic;fontSize=12;dashed=1;" edge="1" parent="1">
+      <mxGeometry x="0" y="-10" relative="1" as="geometry">
+        <mxPoint x="420" y="620" as="sourcePoint" />
+        <mxPoint x="160" y="620" as="targetPoint" />
+        <mxPoint as="offset" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="sw_domain_label" value="Software Domain&lt;br&gt;(Control Intensive)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=2;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="210" y="710" width="160" height="40" as="geometry" />
+    </mxCell>
+
+    <mxCell id="hw_domain_label" value="Hardware Domain&lt;br&gt;(Computationally Intensive)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=2;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="600" y="710" width="160" height="40" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
