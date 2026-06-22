@@ -1,0 +1,121 @@
+<mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1050" pageHeight="450" math="1" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <mxCell id="boundary" value="Equalizer Preprocessing Stage (Table 10.1)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;dashed=1;verticalAlign=top;fontStyle=1;fontSize=14;spacingTop=10;align=left;spacingLeft=10;" vertex="1" parent="1">
+      <mxGeometry x="200" y="40" width="620" height="320" as="geometry" />
+    </mxCell>
+
+    <mxCell id="lbl_Y" value="Received Vector $$Y$$" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="120" width="160" height="40" as="geometry" />
+    </mxCell>
+    
+    <mxCell id="lbl_H" value="Channel Matrix $$H$$" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="260" width="160" height="40" as="geometry" />
+    </mxCell>
+
+    <mxCell id="blk_herm" value="&lt;b&gt;Hermitian Transpose&lt;/b&gt;&lt;br&gt;$$(\cdot)^H$$" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="240" y="240" width="160" height="80" as="geometry" />
+    </mxCell>
+
+    <mxCell id="blk_mf" value="&lt;b&gt;Matched Filtering&lt;/b&gt;&lt;br&gt;$$b = H^H Y$$" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="480" y="100" width="180" height="80" as="geometry" />
+    </mxCell>
+
+    <mxCell id="blk_gram" value="&lt;b&gt;Gram Matrix Generation&lt;/b&gt;&lt;br&gt;$$A = H^H H$$" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="480" y="240" width="180" height="80" as="geometry" />
+    </mxCell>
+
+    <mxCell id="lbl_b" value="Matched Vector $$b$$" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="680" y="120" width="140" height="40" as="geometry" />
+    </mxCell>
+    
+    <mxCell id="lbl_A" value="Gram Matrix $$A$$" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="680" y="260" width="140" height="40" as="geometry" />
+    </mxCell>
+
+    <mxCell id="next_stage_box" value="&lt;b&gt;Linear System Solver&lt;/b&gt;&lt;br&gt;&lt;i&gt;(Cholesky &amp;amp; Substitution)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=12;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="860" y="100" width="160" height="220" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_Y" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#000000;" edge="1" parent="1" source="lbl_Y" target="blk_mf">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_H" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#000000;" edge="1" parent="1" source="lbl_H" target="blk_herm">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_H_tap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#000000;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="200" y="340" />
+          <mxPoint x="450" y="340" />
+          <mxPoint x="450" y="290" />
+        </Array>
+        <mxPoint x="200" y="280" as="sourcePoint" />
+        <mxPoint x="480" y="290" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="dot_H" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="197" y="277" width="6" height="6" as="geometry" />
+    </mxCell>
+    
+    <mxCell id="lbl_tap_H" value="$$H$$" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="420" y="340" width="30" height="20" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_Herm_to_MF" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#000000;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="420" y="280" />
+          <mxPoint x="420" y="150" />
+        </Array>
+        <mxPoint x="400" y="280" as="sourcePoint" />
+        <mxPoint x="480" y="150" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="edge_Herm_to_Gram" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#000000;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="420" y="280" />
+          <mxPoint x="420" y="270" />
+        </Array>
+        <mxPoint x="400" y="280" as="sourcePoint" />
+        <mxPoint x="480" y="270" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    
+    <mxCell id="dot_Herm" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;" vertex="1" parent="1">
+      <mxGeometry x="417" y="277" width="6" height="6" as="geometry" />
+    </mxCell>
+    
+    <mxCell id="lbl_tap_HH" value="$$H^H$$" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="420" y="210" width="40" height="20" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#000000;" edge="1" parent="1" source="blk_mf" target="lbl_b">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="edge_A" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#000000;" edge="1" parent="1" source="blk_gram" target="lbl_A">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="link_b_next" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#999999;dashed=1;" edge="1" parent="1" source="lbl_b">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="860" y="140" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+
+    <mxCell id="link_A_next" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeWidth=2;endArrow=classic;strokeColor=#999999;dashed=1;" edge="1" parent="1" source="lbl_A">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="860" y="280" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

@@ -1,0 +1,658 @@
+# SESSION HANDOFF – CHAPTER 10 (Hardware I: Algorithms)
+
+You are helping write a Master's/Engineering thesis chapter titled:
+
+# Hardware I: Algorithms
+
+This chapter follows directly after **"HW/SW Co-Design"** and must maintain the exact same writing style, structure, tone, and academic level used throughout the thesis.
+
+The chapter focuses on the **algorithmic foundations of the MIMO equalizer** that was implemented in the project.
+
+This chapter is NOT a hardware chapter.
+
+This chapter is NOT an RTL chapter.
+
+This chapter is NOT a communication-theory survey.
+
+The purpose of this chapter is to explain the mathematical and algorithmic foundation that later motivates the hardware architecture presented in:
+
+* **"Hardware II: HWPE"**
+* **"Hardware III: System Pipeline"**
+
+---
+
+# THESIS WRITING STYLE REQUIREMENTS
+
+## General Style
+
+Write in formal academic thesis style.
+
+Write complete thesis-ready content.
+
+Do NOT write instructions.
+
+Do NOT write notes.
+
+Do NOT write outlines unless requested.
+
+Write the actual thesis content.
+
+---
+
+## Paragraph Length
+
+Very important:
+
+Paragraphs must remain short.
+
+Target:
+
+* 3–5 sentences
+* approximately 4–6 Word lines
+
+Avoid large walls of text.
+
+Whenever a new idea starts, begin a new paragraph.
+
+---
+
+## One Concept Per Paragraph
+
+Each paragraph should discuss a single concept.
+
+Avoid mixing:
+
+* theory
+* implementation
+* complexity
+* hardware
+
+inside the same paragraph.
+
+---
+
+## Engineering Story Philosophy
+
+The chapter should tell a coherent engineering story.
+
+The narrative should follow:
+
+Problem
+
+↓
+
+Mathematical Formulation
+
+↓
+
+Computational Challenge
+
+↓
+
+Algorithmic Reformulation
+
+↓
+
+Proposed Solution
+
+↓
+
+Complexity
+
+↓
+
+Latency
+
+↓
+
+Transition to Hardware
+
+Avoid writing the chapter as a collection of disconnected theory sections.
+
+---
+
+# CHAPTER REFERENCING STYLE
+
+When referring to another chapter, always use the chapter title in bold quotation marks.
+
+Examples:
+
+* **"MIMO in Mobile Communication Systems"**
+* **"PULP Platform"**
+* **"Multi Cluster PULP"**
+* **"Firmware"**
+* **"HW/SW Co-Design"**
+* **"Hardware II: HWPE"**
+* **"Hardware III: System Pipeline"**
+* **"System Performance Analysis"**
+
+Never write:
+
+* Previous chapter
+* Next chapter
+* Chapter 3
+* Chapter 7
+
+Always use chapter titles.
+
+---
+
+# EQUATIONS
+
+Whenever an equation is introduced:
+
+Immediately follow with:
+
+where:
+
+and define every variable.
+
+Example:
+
+[
+Y = HX + N
+]
+
+where:
+
+* (Y) is the received signal vector,
+* (H) is the channel matrix,
+* (X) is the transmitted signal vector,
+* (N) is the additive noise vector.
+
+This convention must always be followed.
+
+---
+
+# FIGURES
+
+Whenever a figure would improve readability:
+
+Suggest it.
+
+Format:
+
+**Suggested Figure X.X:** Description
+
+Do not generate images.
+
+Only suggest them.
+
+Figures should be:
+
+* conceptual
+* algorithmic
+* processing-flow oriented
+
+Avoid RTL diagrams in this chapter.
+
+---
+
+# TABLES
+
+Use tables frequently.
+
+Prefer tables over large textual comparisons.
+
+Examples:
+
+* operation counts
+* complexity comparisons
+* dependency relationships
+* latency comparisons
+
+Always:
+
+1. Introduce the table.
+2. Insert table.
+3. Discuss observations.
+
+---
+
+# LANGUAGE TO AVOID
+
+Do NOT use:
+
+* revolutionary
+* innovative
+* state-of-the-art
+* highly efficient
+* outstanding
+* remarkable
+
+Do NOT use AI-style transitions such as:
+
+* As discussed previously...
+* As mentioned earlier...
+* It is evident that...
+* Clearly...
+* Obviously...
+
+Use direct engineering language.
+
+---
+
+# TECHNICAL SCOPE OF THIS CHAPTER
+
+The chapter focuses on:
+
+* MIMO equalization problem
+* Linear system formulation
+* Cholesky decomposition
+* Forward substitution
+* Backward substitution
+* Proposed equalization algorithm
+* Computational complexity
+* Latency analysis
+
+The chapter does NOT focus on:
+
+* RTL implementation
+* Verilog modules
+* HWPE architecture
+* AXI
+* TCDM
+* SoC integration
+
+These topics belong to later chapters.
+
+---
+
+# MATHEMATICAL LEVEL
+
+Use enough mathematics to explain the algorithm.
+
+Avoid excessive derivations.
+
+The chapter should remain engineering-oriented.
+
+The goal is understanding the algorithm, not proving theorems.
+
+---
+
+# NOTATION DECISION
+
+Use generic formulation throughout the chapter.
+
+Always write:
+
+[
+Y = HX + N
+]
+
+and
+
+[
+H \in \mathbb{C}^{N \times N}
+]
+
+Use generic (N) whenever possible.
+
+Only mention that the implemented system uses:
+
+[
+N = 8
+]
+
+when discussing the proposed architecture or implementation.
+
+Do NOT formulate the entire chapter specifically around an 8×8 system.
+
+---
+
+# REFERENCES TO USE
+
+The chapter is based primarily on:
+
+### [CIT-TSE]
+
+David Tse and Pramod Viswanath
+
+Fundamentals of Wireless Communication
+
+Use for:
+
+* MIMO model
+* Equalization objective
+* Linear detection concepts
+
+---
+
+### [CIT-LUO]
+
+Fa-Long Luo
+
+MIMO Processing for 4G and Beyond
+
+Use for:
+
+* MIMO equalization
+* Matrix formulation
+* Matched filtering
+* Cholesky-based approaches
+* Complexity discussion
+
+---
+
+### [CIT-GOLUB]
+
+Gene H. Golub and Charles F. Van Loan
+
+Matrix Computations
+
+Use for:
+
+* Cholesky decomposition
+* Forward substitution
+* Backward substitution
+* Triangular systems
+
+---
+
+# CHAPTER STRUCTURE
+
+## 10.1 Introduction
+
+Purpose:
+
+Introduce the equalizer within the MIMO receiver chain.
+
+Reference:
+
+**"MIMO in Mobile Communication Systems"**
+
+Suggested Figure:
+
+Receiver Processing Chain
+
+Target:
+
+≈ 1 page
+
+---
+
+## 10.2 MIMO Equalization Problem
+
+Present:
+
+[
+Y = HX + N
+]
+
+Explain:
+
+* received vector
+* channel matrix
+* transmitted vector
+* noise
+
+Discuss equalization objective.
+
+References:
+
+[CIT-TSE]
+
+[CIT-LUO]
+
+Target:
+
+≈ 1–1.5 pages
+
+---
+
+## 10.3 From Matrix Inversion to Linear System Solving
+
+Present:
+
+[
+H^H H X = H^H Y
+]
+
+Define:
+
+[
+A = H^H H
+]
+
+[
+b = H^H Y
+]
+
+Result:
+
+[
+AX = b
+]
+
+Explain why direct inversion is undesirable.
+
+References:
+
+[CIT-LUO]
+
+Target:
+
+≈ 1.5 pages
+
+---
+
+## 10.4 Cholesky Decomposition
+
+Present:
+
+[
+A = LL^H
+]
+
+Explain:
+
+* Hermitian matrices
+* Positive-definite matrices
+* Lower triangular matrices
+
+Focus on engineering motivation.
+
+References:
+
+[CIT-GOLUB]
+
+[CIT-LUO]
+
+Target:
+
+≈ 2 pages
+
+---
+
+## 10.5 Forward Substitution
+
+Present:
+
+[
+Lz=b
+]
+
+Explain:
+
+* computation order
+* dependencies
+* algorithmic flow
+
+References:
+
+[CIT-GOLUB]
+
+Target:
+
+≈ 1.5–2 pages
+
+---
+
+## 10.6 Backward Substitution
+
+Present:
+
+[
+L^H x=z
+]
+
+Explain:
+
+* reverse dependencies
+* solution recovery
+
+References:
+
+[CIT-GOLUB]
+
+Target:
+
+≈ 1.5–2 pages
+
+---
+
+## 10.7 Proposed Equalizer Algorithm
+
+This is the project's contribution.
+
+Flow:
+
+FFT Outputs
+
+↓
+
+Matched Filter
+
+↓
+
+Gram Matrix
+
+↓
+
+Forward Substitution
+
+↓
+
+Backward Substitution
+
+↓
+
+Detected Symbols
+
+Use the project architecture.
+
+Reference project work more than textbooks.
+
+Target:
+
+≈ 2 pages
+
+---
+
+## 10.8 Computational Complexity Analysis
+
+Use:
+
+* matrix multiplication cost
+* substitution cost
+
+Compare conceptually with direct inversion.
+
+References:
+
+[CIT-LUO]
+
+Target:
+
+≈ 1 page
+
+---
+
+## 10.9 Latency Analysis
+
+Use project latency analysis.
+
+Discuss:
+
+* dependency chains
+* latency growth with N
+
+Present:
+
+[
+2N-1
+]
+
+or final adopted expression.
+
+Target:
+
+≈ 1 page
+
+---
+
+## 10.10 Chapter Summary
+
+Summarize:
+
+* equalization problem
+* Cholesky reformulation
+* substitution stages
+* proposed algorithm
+
+End with a transition toward:
+
+**"Hardware II: HWPE"**
+
+Target:
+
+≈ 0.5 page
+
+---
+
+# TARGET CHAPTER LENGTH
+
+12–15 pages
+
+Target:
+
+≈ 13 pages
+
+---
+
+# FINAL WRITING OBJECTIVE
+
+The chapter must read as if written by the same author who wrote **"HW/SW Co-Design"**.
+
+Maintain:
+
+* short paragraphs
+* concise explanations
+* strong engineering focus
+* frequent figures and tables
+* limited but meaningful mathematics
+* clear transition toward the hardware chapters
+
+The final chapter should tell a single coherent story:
+
+MIMO Equalization Problem
+
+↓
+
+Cholesky-Based Reformulation
+
+↓
+
+Forward and Backward Substitution
+
+↓
+
+Proposed Equalizer Algorithm
+
+↓
+
+Complexity and Latency Analysis
+
+↓
+
+Hardware Motivation for HWPE Implementation.
